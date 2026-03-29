@@ -27,9 +27,29 @@ async function translateToArabic(text: string): Promise<string> {
 }
 
 async function toCard(a: any) {
+  let thumb = a.thumbnail;
+
+  // Auto-fetch missing image from Jikan API
+  if (!thumb || thumb.includes('/404.jpg') || thumb.trim() === '') {
+    if (a.mal_id && a.mal_id !== '0') {
+      const jikan = await getAnimeByMalId(String(a.mal_id)).catch(() => null);
+      if (jikan?.images?.jpg?.large_image_url) {
+        thumb = jikan.images.jpg.large_image_url;
+      }
+    }
+    
+    // Fallback to name search if MAL ID fails
+    if ((!thumb || thumb.includes('/404.jpg') || thumb.trim() === '') && a.title_en) {
+      const jResults = await searchJikan(a.title_en).catch(() => []);
+      if (jResults[0]?.images?.jpg?.large_image_url) {
+        thumb = jResults[0].images.jpg.large_image_url;
+      }
+    }
+  }
+
   return {
     id: a.id, title: a.title_en || a.title_jp || a.id, title_jp: a.title_jp || null,
-    slug: a.id, image: IMG(a.thumbnail) || '', synopsis: a.synopsis ? await translateToArabic(a.synopsis) : '',
+    slug: a.id, image: IMG(thumb) || '', synopsis: a.synopsis ? cleanBrandText(a.synopsis) : '',
     type: a.type === 'MOVIE' ? 'Movie' : 'TV',
     status: a.status?.toLowerCase().includes('finish') ? 'COMPLETED' : 'ONGOING',
     rating: a.score && a.score !== 'N/A' ? parseFloat(a.score) : null,
@@ -163,15 +183,22 @@ export async function GET(request: NextRequest) {
       }
 
       const searchSlug = slug || originalSlug;
+      // Convert "xJujutsuKaisenS3" into "Jujutsu Kaisen S 3" to allow Search API to find metadata!
+      const formattedSearchQuery = searchSlug.replace(/[-_]+/g, ' ')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/([a-zA-Z])(\d+)/g, '$1 $2')
+        .replace(/(\d+)([a-zA-Z])/g, '$1 $2')
+        .replace(/^x\s*/i, '').trim() || searchSlug;
+
       const [results, episodes] = await Promise.all([
-        getAnimeList('SEARCH', searchSlug, 'SERIES', 0, 5).catch(() => []),
-        getEpisodes(searchSlug).catch(() => []),
+        getAnimeList('SEARCH', formattedSearchQuery, 'SERIES', 0, 5).catch(() => []),
+        getEpisodes(searchSlug).catch(() => []), // Must use exact slug for episodes
       ]);
 
-      let aniData = results.find((a: any) => a.id === slug) || results[0];
+      let aniData = results.find((a: any) => a.id === searchSlug || a.title_en?.toLowerCase().includes(formattedSearchQuery.toLowerCase())) || results[0];
       if (!aniData) {
-        const mv = await getAnimeList('SEARCH', searchSlug, 'MOVIE', 0, 3).catch(() => []);
-        aniData = mv.find((a: any) => a.id === searchSlug) || mv[0];
+        const mv = await getAnimeList('SEARCH', formattedSearchQuery, 'MOVIE', 0, 3).catch(() => []);
+        aniData = mv.find((a: any) => a.id === searchSlug || a.title_en?.toLowerCase().includes(formattedSearchQuery.toLowerCase())) || mv[0];
       }
 
       // Enrich with Jikan
@@ -179,14 +206,14 @@ export async function GET(request: NextRequest) {
         jikan = await getAnimeByMalId(String(aniData.mal_id)).catch(() => null);
       }
       if (!jikan) {
-        const q = aniData?.title_en || aniData?.title_jp || originalSlug;
+        const q = aniData?.title_en || aniData?.title_jp || formattedSearchQuery;
         const jResults = await searchJikan(q).catch(() => []);
         jikan = jResults[0] || null;
       }
 
       const banner = jikan ? jikanBanner(jikan) : null;
       let cover = aniData?.thumbnail;
-      if (!cover && jikan) {
+      if ((!cover || cover.includes('/404.jpg') || cover.trim() === '') && jikan) {
         cover = jikan.images?.jpg?.large_image_url || jikan.images?.webp?.large_image_url || jikanCover(jikan);
       }
 
@@ -200,7 +227,7 @@ export async function GET(request: NextRequest) {
         success: true,
         data: {
           id: slug, slug,
-          title: jikan?.title || jikan?.title_english || aniData?.title_en || originalSlug,
+          title: jikan?.title || jikan?.title_english || aniData?.title_en || formattedSearchQuery,
           title_jp: jikan?.title_japanese || aniData?.title_jp || null,
           image: cover ? (cover.includes('jikan') || cover.includes('myanimelist') ? cover : (IMG(cover) || PLACEHOLDER_IMG)) : PLACEHOLDER_IMG,
           banner: banner ? (banner.includes('jikan') || banner.includes('myanimelist') ? banner : (IMG(banner) || PLACEHOLDER_IMG)) : PLACEHOLDER_IMG,
@@ -278,14 +305,20 @@ export async function GET(request: NextRequest) {
         epNum = parts[parts.length - 1];
       }
 
+      const formattedSearchQuery = animeId.replace(/[-_]+/g, ' ')
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/([a-zA-Z])(\d+)/g, '$1 $2')
+        .replace(/(\d+)([a-zA-Z])/g, '$1 $2')
+        .replace(/^x\s*/i, '').trim() || animeId;
+
       const [results, episodes] = await Promise.all([
-        getAnimeList('SEARCH', animeId, 'SERIES', 0, 3).catch(() => []),
+        getAnimeList('SEARCH', formattedSearchQuery, 'SERIES', 0, 3).catch(() => []),
         getEpisodes(animeId).catch(() => []),
       ]);
-      let anime = results.find((a: any) => a.id === animeId) || results[0];
+      let anime = results.find((a: any) => a.id === animeId || a.title_en?.toLowerCase().includes(formattedSearchQuery.toLowerCase())) || results[0];
       if (!anime) {
-        const mv = await getAnimeList('SEARCH', animeId, 'MOVIE', 0, 3).catch(() => []);
-        anime = mv.find((a: any) => a.id === animeId) || mv[0];
+        const mv = await getAnimeList('SEARCH', formattedSearchQuery, 'MOVIE', 0, 3).catch(() => []);
+        anime = mv.find((a: any) => a.id === animeId || a.title_en?.toLowerCase().includes(formattedSearchQuery.toLowerCase())) || mv[0];
       }
       const serverData = await getServers(animeId, String(epNum), anime?.type || 'SERIES').catch(() => null);
       const currentEp = serverData?.CurrentEpisode || {};
@@ -317,9 +350,10 @@ export async function GET(request: NextRequest) {
       // Use the fast native AniCli thumbnail instead of blocking the player with a slow Jikan request
       let fastImg = anime?.thumbnail;
 
-      // Enrich with Jikan if anicli is missing a thumbnail
-      if (!fastImg) {
-        const jikanRes = await searchJikan(anime?.title_en || animeId).catch(() => []);
+      // Enrich with Jikan if anicli is missing a thumbnail or has a broken link
+      if (!fastImg || fastImg.includes('/404.jpg') || fastImg.trim() === '') {
+        const q = anime?.title_en || anime?.title_jp || formattedSearchQuery;
+        const jikanRes = await searchJikan(q).catch(() => []);
         if (jikanRes.length > 0) {
           fastImg = jikanRes[0].images?.jpg?.large_image_url || jikanRes[0].images?.webp?.large_image_url || jikanCover(jikanRes[0]);
         }
@@ -332,7 +366,7 @@ export async function GET(request: NextRequest) {
           title: currentEpObj ? `${currentEpObj.type} ${currentEpObj.displayNum}` : `الحلقة ${epNum}`,
           anime: { 
             id: animeId, 
-            title: anime?.title_en || animeId, 
+            title: anime?.title_en || anime?.title_jp || formattedSearchQuery, 
             slug: animeId, 
             image: fastImg ? (fastImg.includes('jikan') || fastImg.includes('myanimelist') ? fastImg : IMG(fastImg)) : PLACEHOLDER_IMG,
             mal_id: anime?.mal_id || null

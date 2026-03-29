@@ -75,6 +75,8 @@ export default function AnimeDetailsPage() {
   const [data, setData] = useState<AnimeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [epSearch, setEpSearch] = useState('');
+  const [sortDesc, setSortDesc] = useState(true); // Default: Latest first
+  const [visibleEps, setVisibleEps] = useState(60); // Load in chunks of 60
   const { getHistory } = useHistory();
 
   useEffect(() => {
@@ -97,7 +99,13 @@ export default function AnimeDetailsPage() {
   );
 
   const eps = data.episodeList || [];
-  const filteredEps = epSearch ? eps.filter(e => e.number.toString().includes(epSearch)) : eps;
+  
+  // Sort episodes based on toggle
+  const sortedEps = [...eps].sort((a, b) => {
+    return sortDesc ? b.number - a.number : a.number - b.number;
+  });
+
+  const filteredEps = epSearch ? sortedEps.filter(e => e.number.toString().includes(epSearch)) : sortedEps;
 
   const lastWatched = data.id ? getHistory(data.id) : null;
 
@@ -230,15 +238,20 @@ export default function AnimeDetailsPage() {
         {eps.length > 0 ? (
           <div className="mt-12">
             <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 px-4">
-              <h2 className="text-2xl font-black flex items-center gap-3 text-white">
-                <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
-                الحلقات <span className="text-gray-500 text-lg">({eps.length})</span>
-              </h2>
+              <div className="flex items-center gap-4 w-full sm:w-auto">
+                  <h2 className="text-2xl font-black flex items-center gap-3 text-white">
+                    <div className="w-3 h-3 rounded-full bg-white animate-pulse" />
+                    الحلقات <span className="text-gray-500 text-lg">({eps.length})</span>
+                  </h2>
+                  <button onClick={() => { setSortDesc(!sortDesc); setVisibleEps(60); }} className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm font-bold hover:bg-white/20 transition-colors mr-auto">
+                      {sortDesc ? 'الأحدث أولاً ⬇' : 'الأقدم أولاً ⬆'}
+                  </button>
+              </div>
               {eps.length > 10 && (
                 <div className="relative w-full sm:w-64">
                   <input
                     type="number" placeholder="بحث برقم الحلقة..." value={epSearch}
-                    onChange={e => setEpSearch(e.target.value)}
+                    onChange={e => { setEpSearch(e.target.value); setVisibleEps(60); }}
                     className="w-full pl-10 pr-4 py-3 rounded-full bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-white transition-colors"
                   />
                   <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -247,10 +260,21 @@ export default function AnimeDetailsPage() {
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 sm:gap-8 px-4 justify-items-center">
-              {filteredEps.slice(0, 150).map((ep, idx) => (
+              {filteredEps.slice(0, visibleEps).map((ep, idx) => (
                 <InteractiveEpisodeCard key={`${ep.id}-${idx}`} ep={ep} baseImage={data.image} animeSlug={data.slug} isWatched={lastWatched?.episodeId === ep.id} />
               ))}
             </div>
+
+            {filteredEps.length > visibleEps && (
+                <div className="mt-8 flex justify-center">
+                    <button 
+                        onClick={() => setVisibleEps(prev => prev + 60)}
+                        className="px-12 py-4 bg-[#B026FF]/20 border border-[#B026FF]/50 text-[#B026FF] rounded-full font-bold text-lg hover:bg-[#B026FF] hover:text-white transition-all shadow-[0_0_20px_rgba(176,38,255,0.2)]"
+                    >
+                        عرض المزيد
+                    </button>
+                </div>
+            )}
 
             {filteredEps.length === 0 && (
               <div className="text-center py-20 bg-white/5 rounded-[3rem] border border-white/10">

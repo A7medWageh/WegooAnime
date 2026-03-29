@@ -165,7 +165,7 @@ export function CustomPlayer({
             if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
             seekTimeoutRef.current = setTimeout(() => {
                 if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
-            }, 20);
+            }, 250);
         }
     }, [duration]);
 
@@ -353,7 +353,6 @@ export function CustomPlayer({
                 ref={videoRef}
                 poster={poster}
                 className="w-full h-full object-contain cursor-pointer transition-all duration-300"
-                style={{ filter: `brightness(${brightness}%)` }}
                 crossOrigin="anonymous"
                 onTimeUpdate={handleTimeUpdateEvent}
                 onLoadedMetadata={handleLoadedMetadata}
@@ -367,13 +366,22 @@ export function CustomPlayer({
                 controls={false}
             />
 
+            {/* Hardware Accelerated Brightness Overlay */}
+            <div 
+                className="absolute inset-0 pointer-events-none z-[15]" 
+                style={{ 
+                    backgroundColor: brightness < 100 ? 'black' : 'white', 
+                    opacity: brightness < 100 ? (100 - brightness) / 100 : (brightness - 100) / 100 
+                }} 
+            />
+
             <AnimatePresence>
                 {showControls && (
                     <motion.div
                         initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
                         transition={{ duration: 0.3 }}
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute bottom-0 left-0 right-0 z-[50] pointer-events-auto bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-32 pb-4 px-6 sm:px-10 flex flex-col"
+                        className="absolute bottom-0 left-0 right-0 z-[70] pointer-events-none bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-32 pb-4 px-6 sm:px-10 flex flex-col"
                     >
                         {/* Title and Timeline Block */}
                         <div className="flex flex-col mb-4 pointer-events-auto w-full relative">
@@ -418,7 +426,16 @@ export function CustomPlayer({
                                     <div className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-[#00F0FF] to-[#B026FF] rounded-full pointer-events-none shadow-[0_0_10px_rgba(0,240,255,0.3)]" style={{ width: `${isNaN(progress) ? 0 : progress}%` }}>
                                          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-white rounded-full shadow-md transition-transform scale-100 group-hover/slider:scale-125" />
                                     </div>
-                                    <input type="range" min="0" max="100" step="0.1" value={isNaN(progress) ? 0 : progress} onChange={handleSeek} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                    <input 
+                                        type="range" min="0" max="100" step="0.1" 
+                                        value={isNaN(progress) ? 0 : progress} 
+                                        onChange={handleSeek} 
+                                        onMouseLeave={() => setHoverTime(null)}
+                                        onMouseUp={() => setHoverTime(null)}
+                                        onTouchEnd={() => setHoverTime(null)}
+                                        onTouchCancel={() => setHoverTime(null)}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 pointer-events-auto" 
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -534,16 +551,6 @@ export function CustomPlayer({
                     </motion.button>
                 )}
 
-                {/* Fallback Intro Skip (If AniSkip not available) */}
-                {isPlaying && !skipTimes.op && currentTime > 0 && currentTime < 90 && !hasSkippedIntro && (
-                    <motion.button
-                        initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
-                        onClick={(e) => { e.stopPropagation(); if (videoRef.current) { setHasSkippedIntro(true); setIsWaiting(true); videoRef.current.currentTime += 85; videoRef.current.play().finally(() => setIsWaiting(false)); } }}
-                        className="absolute bottom-32 sm:bottom-40 right-6 sm:right-10 z-[70] px-5 py-2.5 bg-[#030014]/80 backdrop-blur-xl border border-[#00F0FF]/30 text-[#00F0FF] rounded-xl font-black text-xs sm:text-sm shadow-2xl hover:bg-[#00F0FF] hover:text-[#05001A] hover:border-[#00F0FF] transition-all flex items-center gap-2 pointer-events-auto"
-                    >
-                        <FastForward className="w-4 h-4" /> تخطي الانترو
-                    </motion.button>
-                )}
             </AnimatePresence>
         </div>
     );

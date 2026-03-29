@@ -60,6 +60,7 @@ export function MobilePlayer({
     const [isWaiting, setIsWaiting] = useState(true);
     const [playbackRate, setPlaybackRate] = useState(1);
     const [brightness, setBrightness] = useState(100);
+    const [isPortrait, setIsPortrait] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [qualities, setQualities] = useState<{ id: number, label: string }[]>([]);
     const [currentQuality, setCurrentQuality] = useState<number>(-1);
@@ -82,6 +83,13 @@ export function MobilePlayer({
     const [scrubTime, setScrubTime] = useState<number | null>(null);
     const [isThumbnailReady, setIsThumbnailReady] = useState(false);
     const seekTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        const handleResize = () => setIsPortrait(window.innerHeight > window.innerWidth);
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // HLS Integration
     useEffect(() => {
@@ -235,7 +243,7 @@ export function MobilePlayer({
             if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
             seekTimeoutRef.current = setTimeout(() => {
                 if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
-            }, 20);
+            }, 250);
         }
         setShowControls(true);
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
@@ -243,6 +251,7 @@ export function MobilePlayer({
 
     const handleSeekTouchEnd = () => {
         setScrubTime(null);
+        setHoverTime(null);
     };
 
     const handleTimelineMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -263,7 +272,7 @@ export function MobilePlayer({
             if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
             seekTimeoutRef.current = setTimeout(() => {
                 if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
-            }, 20);
+            }, 250);
         }
     }, []);
 
@@ -311,10 +320,12 @@ export function MobilePlayer({
         }
 
         const isIOS = checkIsIOS();
-        if (isIOS) {
-            setIsFullscreen(true);
+        if (isIOS && videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
+            // Apple restricts hardware fullscreen to the native video element on iPhones.
+            (videoRef.current as any).webkitEnterFullscreen();
         } else if (elem.requestFullscreen) {
             elem.requestFullscreen().then(() => {
+                setIsFullscreen(true);
                 try {
                     const navScreen = window.screen as any;
                     if (navScreen.orientation && navScreen.orientation.lock) {
@@ -418,7 +429,8 @@ export function MobilePlayer({
                 }
             }}
         >
-            <video ref={previewVideoRef} className="hidden" muted playsInline crossOrigin="anonymous" onSeeked={handlePreviewSeeked} />
+            <div className={`relative flex items-center justify-center flex-col overflow-hidden w-full ${isFullscreen && isPortrait ? 'aspect-video shadow-[0_0_50px_rgba(0,0,0,1)] z-10' : 'h-full'} min-w-0 max-w-full`}>
+                <video ref={previewVideoRef} className="hidden" muted playsInline crossOrigin="anonymous" onSeeked={handlePreviewSeeked} />
 
             {/* Gesture Indicators */}
             <AnimatePresence>
@@ -470,7 +482,6 @@ export function MobilePlayer({
                 ref={videoRef}
                 poster={poster}
                 className="w-full h-full object-contain transition-all duration-300 pointer-events-none"
-                style={{ filter: `brightness(${brightness}%)` }}
                 crossOrigin="anonymous"
                 onTimeUpdate={handleTimeUpdateEvent}
                 onLoadedMetadata={handleLoadedMetadata}
@@ -484,6 +495,15 @@ export function MobilePlayer({
                 controls={false}
             />
 
+            {/* Hardware Accelerated Brightness Overlay */}
+            <div 
+                className="absolute inset-0 pointer-events-none z-[15]" 
+                style={{ 
+                    backgroundColor: brightness < 100 ? 'black' : 'white', 
+                    opacity: brightness < 100 ? (100 - brightness) / 100 : (brightness - 100) / 100 
+                }} 
+            />
+
             {/* Redesigned Controls matches CustomPlayer */}
             <AnimatePresence>
                 {showControls && (
@@ -491,14 +511,14 @@ export function MobilePlayer({
                         initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
                         transition={{ duration: 0.3 }}
                         onClick={(e) => e.stopPropagation()}
-                        className="absolute bottom-0 left-0 right-0 z-[50] pointer-events-auto bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-32 pb-4 px-4 flex flex-col"
+                        className="absolute bottom-0 left-0 right-0 z-[70] pointer-events-none bg-gradient-to-t from-black/95 via-black/60 to-transparent pt-32 pb-4 px-4 flex flex-col"
                     >
                         {/* Title and Timeline Block */}
-                        <div className="flex flex-col mb-4 pointer-events-auto w-full relative">
+                        <div className="flex flex-col mb-4 pointer-events-auto w-full relative min-w-0">
                             {/* Text Info */}
-                            <div className="mb-2">
-                                {title && <h2 className="text-white text-base font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wide truncate max-w-[80%]">{title}</h2>}
-                                {subtitle && <p className="text-[#00F0FF] text-[10px] font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase mt-0.5 truncate">{subtitle}</p>}
+                            <div className="mb-2 min-w-0 pr-4">
+                                {title && <h2 className="text-white text-base sm:text-lg font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-wide truncate max-w-full">{title}</h2>}
+                                {subtitle && <p className="text-[#00F0FF] text-[10px] font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] uppercase mt-0.5 truncate max-w-full">{subtitle}</p>}
                             </div>
 
                             {/* Timeline */}
@@ -545,8 +565,11 @@ export function MobilePlayer({
                                         onTouchStart={handleSeekTouchMove}
                                         onTouchMove={handleSeekTouchMove}
                                         onTouchEnd={handleSeekTouchEnd}
+                                        onTouchCancel={handleSeekTouchEnd}
+                                        onMouseLeave={handleSeekTouchEnd}
+                                        onMouseUp={handleSeekTouchEnd}
                                         onClick={(e) => e.stopPropagation()}
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 pointer-events-auto" 
                                     />
                                 </div>
                             </div>
@@ -637,16 +660,6 @@ export function MobilePlayer({
                     </motion.button>
                 )}
 
-                {/* Fallback Intro Skip (If AniSkip not available) */}
-                {isPlaying && !skipTimes.op && currentTime > 0 && currentTime < 90 && !hasSkippedIntro && scrubTime === null && (
-                    <motion.button
-                        initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
-                        onClick={(e) => { e.stopPropagation(); if (videoRef.current) { setHasSkippedIntro(true); setIsWaiting(true); videoRef.current.currentTime += 85; videoRef.current.play().finally(() => setIsWaiting(false)); } }}
-                        className="absolute bottom-32 right-4 z-[70] px-4 py-2 bg-[#030014]/80 backdrop-blur-xl border border-[#00F0FF]/30 text-[#00F0FF] rounded-xl font-black text-[10px] shadow-2xl transition-all flex items-center gap-2 pointer-events-auto"
-                    >
-                        <FastForward className="w-4 h-4" /> تخطي الانترو
-                    </motion.button>
-                )}
             </AnimatePresence>
 
             {/* Advanced Settings Panel - Mission Control Mobile */}
@@ -727,6 +740,7 @@ export function MobilePlayer({
                     </>
                 )}
             </AnimatePresence>
+            </div>
         </div>
     );
 

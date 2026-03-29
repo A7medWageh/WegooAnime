@@ -58,7 +58,11 @@ export default function WatchPage() {
   const [startTime, setStartTime] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [downloadQuality, setDownloadQuality] = useState('اختر الجودة');
   const [isDownloadPaused, setIsDownloadPaused] = useState(false);
+  const [downloadErrorMsg, setDownloadErrorMsg] = useState<string | null>(null);
+  const [downloadErrorUrl, setDownloadErrorUrl] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isPausedRef = useRef(false);
 
@@ -116,8 +120,11 @@ export default function WatchPage() {
       router.push(`/watch/${encodeURIComponent(data.episodes[next].id)}`);
   }, [data, router]);
 
-  const handleDownload = async () => {
-    if (!videoUrl) return;
+  const handleDownload = async (serverIdOrUrl: string, qualityLabel: string) => {
+    if (!serverIdOrUrl) return;
+    setDownloadErrorMsg(null);
+    setDownloadErrorUrl(null);
+    setDownloadQuality(qualityLabel);
     setIsDownloading(true);
     setDownloadProgress(0);
     setIsDownloadPaused(false);
@@ -126,7 +133,21 @@ export default function WatchPage() {
     abortControllerRef.current = controller;
 
     try {
-      const response = await fetch(videoUrl, { signal: controller.signal });
+      // Resolve the actual video url
+      let finalUrl = serverIdOrUrl;
+      // If it's a server ID, fetch the raw stream URL from our API
+      if (!serverIdOrUrl.startsWith('http') && !serverIdOrUrl.includes('/api/')) {
+         const res = await fetch(`/api/anime?action=stream&id=${encodeURIComponent(serverIdOrUrl)}`).then(x => x.json());
+         if (res.success && res.url) finalUrl = res.url;
+         else throw new Error("Failed to resolve stream URL from server ID");
+      } else if (serverIdOrUrl.includes('/api/') || serverIdOrUrl.includes('aniwatch')) {
+        const r = await fetch(serverIdOrUrl).then(x => x.json());
+        if (r.url) finalUrl = r.url;
+        else if (r.sources && r.sources.length>0) finalUrl = r.sources[0].url;
+      }
+      
+      // Now fetch the actual stream blob
+      const response = await fetch(finalUrl, { signal: controller.signal });
       if (!response.ok) throw new Error('Download failed');
       const reader = response.body?.getReader();
       const contentLength = +(response.headers.get('Content-Length') || 0);
@@ -153,12 +174,28 @@ export default function WatchPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${data?.anime.title} - الحلقة ${data?.number}.mp4`;
+      a.download = `${data?.anime.title} - الحلقة ${data?.number} - ${qualityLabel}.mp4`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      if (err.name !== 'AbortError') window.open(videoUrl, '_blank');
+      if (err.name !== 'AbortError') {
+         // Resolve the fallback url safely for the external button
+         let fallback = serverIdOrUrl;
+         if (!serverIdOrUrl.startsWith('http') && !serverIdOrUrl.includes('/api/')) {
+             try {
+                 const res = await fetch(`/api/anime?action=stream&id=${encodeURIComponent(serverIdOrUrl)}`).then(x => x.json());
+                 if (res.url) fallback = res.url;
+             } catch(e) {}
+         } else if (serverIdOrUrl.includes('/api/')) {
+             try {
+                 const r = await fetch(serverIdOrUrl).then(x => x.json());
+                 fallback = r.url || r.sources?.[0]?.url || serverIdOrUrl;
+             } catch(e) {}
+         }
+         setDownloadErrorMsg("حماية الخادم تمنع التنزيل المباشر كملف داخلي.");
+         setDownloadErrorUrl(fallback);
+      }
     } finally {
       setIsDownloading(false);
       setDownloadProgress(0);
@@ -197,9 +234,9 @@ export default function WatchPage() {
     <div className={`flex flex-col transition-colors duration-700 ${theaterMode ? 'bg-[#000000]' : 'bg-[#030014]'} text-white selection:bg-[#00F0FF]/30`}>
       <Header />
       <main className="flex-1 py-8 px-0 sm:px-8 mt-16 font-sans">
-        <div className={`mx-auto transition-all duration-700 ${theaterMode ? 'w-full max-w-none px-0 -mt-16 relative z-50' : 'max-w-[1600px] container'}`}>
-          <div className={`grid gap-6 items-start ${theaterMode ? 'grid-cols-1' : 'lg:grid-cols-4 xl:grid-cols-5'}`}>
-            <div className={`${theaterMode ? 'w-full max-w-7xl mx-auto h-screen flex flex-col' : 'lg:col-span-3 xl:col-span-4'} flex flex-col`}>
+        <div className={`mx-auto transition-all duration-700 w-full min-w-0 ${theaterMode ? 'max-w-none px-0 -mt-16 relative z-50' : 'max-w-[1600px] container'}`}>
+          <div className={`grid gap-6 items-start w-full min-w-0 ${theaterMode ? 'grid-cols-1' : 'lg:grid-cols-4 xl:grid-cols-5'}`}>
+            <div className={`${theaterMode ? 'w-full max-w-7xl mx-auto h-screen flex flex-col' : 'lg:col-span-3 xl:col-span-4'} flex flex-col min-w-0`}>
               <div className={`relative w-full bg-[#05001A] overflow-hidden ${theaterMode ? 'flex-1' : 'aspect-video rounded-none sm:rounded-[3rem] border border-[#00F0FF]/20 shadow-2xl'}`}>
                 <AnimatePresence>
                   {(resolving || (!videoUrl && !videoError)) && (
@@ -293,16 +330,16 @@ export default function WatchPage() {
               )}
             </div>
 
-            <div className={`${theaterMode ? 'hidden' : 'lg:col-span-1 xl:col-span-1'} flex flex-col gap-6 mx-4 sm:mx-0`}>
-              <div className="p-6 rounded-[2.5rem] glass-card border border-white/10 flex flex-col items-center gap-6 relative overflow-hidden group">
+            <div className={`${theaterMode ? 'hidden' : 'lg:col-span-1 xl:col-span-1'} flex flex-col gap-6 mx-4 sm:mx-0 min-w-0 w-full max-w-full`}>
+              <div className="p-6 rounded-[2.5rem] glass-card border border-white/10 flex flex-col items-center gap-6 relative overflow-hidden group min-w-0 w-full">
                 <div className="absolute -right-20 -top-20 w-48 h-48 bg-[#00F0FF]/10 blur-[60px] rounded-full group-hover:bg-[#B026FF]/10 transition-all duration-700" />
-                <div className="relative w-40 h-56 rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
-                  <img src={data.anime.image} alt={data.anime.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <div className="relative w-40 h-56 rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl bg-black/40 flex items-center justify-center shrink-0">
+                  <img src={data.anime.image?.includes('data:image') ? '/logo.png' : (data.anime.image || '/logo.png')} onError={(e) => { if (!e.currentTarget.src.includes('logo.png')) e.currentTarget.src = '/logo.png'; }} alt={data.anime.title} className={`w-full h-full transition-transform duration-700 group-hover:scale-110 ${(data.anime.image?.includes('data:image') || !data.anime.image) ? 'object-contain p-6 opacity-30' : 'object-cover'}`} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                 </div>
-                <div className="text-center w-full">
-                  <h3 className="font-black text-xl mb-4 line-clamp-2">{data.anime.title}</h3>
-                  <div className="flex items-center justify-center gap-3">
+                <div className="text-center w-full min-w-0 max-w-full">
+                  <h3 className="font-black text-xl mb-4 line-clamp-2 break-all break-words overflow-wrap-normal whitespace-normal">{data.anime.title}</h3>
+                  <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
                     <button onClick={() => isFavorite(data.anime.slug) ? removeFavorite(data.anime.slug) : addFavorite({ id: data.anime.id, slug: data.anime.slug, title: data.anime.title, image: data.anime.image || '' })}
                       className={`p-3 rounded-full border transition-all ${isFavorite(data.anime.slug) ? 'bg-[#B026FF]/20 border-[#B026FF] text-[#B026FF]' : 'bg-white/5 border-white/10'}`}>
                       <Heart className={`w-5 h-5 ${isFavorite(data.anime.slug) ? 'fill-current' : ''}`} />
@@ -315,39 +352,62 @@ export default function WatchPage() {
                   </div>
                 </div>
 
-                <div className="w-full bg-[#030014]/60 p-6 rounded-[2rem] border border-white/5">
-                  <div className="flex justify-between items-center mb-6">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-white/40 tracking-widest uppercase">وحدة التحميل</span>
-                      <span className="text-xs font-black text-[#00F0FF]">RAPID INTERFACE</span>
-                    </div>
-                    {isDownloading ? (
-                      <div className="flex gap-2">
-                        <button onClick={togglePauseDownload} className="p-2.5 rounded-xl bg-white/5 text-white">{isDownloadPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}</button>
-                        <button onClick={cancelDownload} className="p-2.5 rounded-xl bg-red-500/10 text-red-500"><X className="w-4 h-4" /></button>
+                <div className="w-full bg-[#030014]/60 p-6 rounded-[2rem] border border-white/5 min-w-0 overflow-hidden">
+                  <div className="flex flex-col mb-4 min-w-0">
+                    <span className="text-sm font-black text-white/60 mb-1">تحميل الحلقة</span>
+                    <span className="text-xs font-black text-[#00F0FF] uppercase">اختر الجودة المطلوبة</span>
+                  </div>
+                  
+                  {downloadErrorMsg ? (
+                    <div className="flex flex-col gap-3 mt-4">
+                      <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-xl flex items-center justify-between">
+                         <span className="text-[10px] font-bold text-red-500">{downloadErrorMsg}</span>
+                         <button onClick={() => setDownloadErrorMsg(null)} className="p-1 text-red-500 hover:text-white"><X className="w-4 h-4"/></button>
                       </div>
-                    ) : (
-                      <button onClick={handleDownload} className="p-2.5 rounded-xl bg-white/5 text-white hover:text-[#00F0FF] transition-all"><Download className="w-5 h-5" /></button>
-                    )}
-                  </div>
-                  <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden mb-4">
-                    <motion.div animate={{ width: isDownloading ? `${downloadProgress}%` : '0%' }} className="h-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] shadow-[0_0_10px_rgba(0,240,255,0.5)]" />
-                  </div>
-                  <div className="flex justify-between items-end gap-2">
-                     <span className="text-[10px] font-black text-white/40 uppercase">{isDownloading ? `Nearing Completion... ${downloadProgress}%` : 'Signal Ready'}</span>
-                     <span className="text-[10px] bg-[#00F0FF]/10 text-[#00F0FF] px-3 py-1 rounded-full font-black">MP4-HQ</span>
-                  </div>
+                      <a href={downloadErrorUrl!} target="_blank" className="py-3 px-4 rounded-xl bg-[#B026FF]/20 text-xs font-black text-white border border-[#B026FF]/30 text-center flex items-center justify-center gap-2 hover:bg-[#B026FF]/40 transition-all">
+                        <Download className="w-4 h-4"/> تحميل عبر السيرفر الخارجي (كليك يمين + Save)
+                      </a>
+                    </div>
+                  ) : isDownloading ? (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex justify-between items-center text-white">
+                        <span className="text-xs font-black tracking-wide">جاري التنزيل... {downloadProgress}%</span>
+                        <div className="flex gap-2">
+                          <button onClick={togglePauseDownload} className="p-2 rounded-lg bg-white/10 text-white hover:text-[#00F0FF] transition-all">{isDownloadPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}</button>
+                          <button onClick={cancelDownload} className="p-2 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all"><X className="w-4 h-4" /></button>
+                        </div>
+                      </div>
+                      <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                        <motion.div animate={{ width: `${downloadProgress}%` }} className="h-full bg-gradient-to-r from-[#00F0FF] to-[#B026FF] shadow-[0_0_10px_rgba(0,240,255,0.5)]" />
+                      </div>
+                      <div className="flex justify-between items-end gap-2 mt-2">
+                        <span className="text-[10px] bg-[#00F0FF]/10 text-[#00F0FF] px-3 py-1 rounded-full font-black border border-[#00F0FF]/20">{downloadQuality}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 mt-4">
+                      {data?.availableSources?.length ? data.availableSources.map((src: any) => (
+                        <button key={src.serverId + src.quality} onClick={() => handleDownload(src.serverId, src.quality)} className="py-2.5 px-2 rounded-xl bg-white/5 text-xs font-black hover:bg-[#00F0FF]/10 hover:text-[#00F0FF] border border-white/5 hover:border-[#00F0FF]/30 transition-all text-white flex items-center justify-center gap-1.5 whitespace-nowrap">
+                          <Download className="w-4 h-4 flex-shrink-0" /> {src.quality}
+                        </button>
+                      )) : (
+                        <button onClick={() => handleDownload(videoUrl!, 'تلقائي')} className="col-span-2 py-3 rounded-xl bg-[#B026FF]/20 text-sm font-black hover:bg-[#B026FF]/30 text-white border border-[#B026FF]/40 transition-all flex items-center justify-center gap-2">
+                          <Download className="w-5 h-5" /> تحميل الحلقة
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="rounded-[2.5rem] glass-card border border-white/10 overflow-hidden flex flex-col h-fit max-h-[500px]">
+              <div className="rounded-[2.5rem] glass-card border border-white/10 overflow-hidden flex flex-col h-fit max-h-[500px] min-w-0 w-full">
                 <div className="p-6 bg-white/5 border-b border-white/5 flex items-center gap-3">
                   <Film className="w-5 h-5 text-[#00F0FF]" />
                   <h3 className="font-black text-lg">عقد المسار <span className="text-white/40 text-sm">({data.episodes.length})</span></h3>
                 </div>
                 <div className="p-4 overflow-y-auto scrollbar-hide">
                   <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-                    {data.episodes.map((ep) => (
+                    {[...data.episodes].reverse().map((ep) => (
                       <Link key={ep.id} href={`/watch/${encodeURIComponent(ep.id)}`} className={`aspect-square flex items-center justify-center rounded-full text-xs font-black transition-all ${ep.id === episodeId ? 'bg-gradient-to-br from-[#00F0FF] to-[#B026FF] text-white shadow-lg scale-110' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'}`}>
                         {ep.number}
                       </Link>
