@@ -1,0 +1,206 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User & Authentication
+// ============================================
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  username     String         @unique
+  password     String         // Hashed password
+  avatar       String?
+  role         Role           @default(USER)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  // Relations
+  comments     Comment[]
+  favorites    Favorite[]
+  watchHistory WatchHistory[]
+
+  @@map("users")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// ============================================
+// Anime Content
+// ============================================
+
+model Anime {
+  id           String      @id @default(cuid())
+  malId        Int?        // MyAnimeList ID
+  title        String
+  titleEnglish String?
+  titleJapanese String?
+  slug         String      @unique
+  synopsis     String?
+  description  String?
+  coverImage   String?
+  bannerImage  String?
+  trailerUrl   String?
+  rating       Float?
+  year         Int?
+  season       String?     // winter, spring, summer, fall
+  status       AnimeStatus @default(ONGOING)
+  type         AnimeType   @default(TV)
+  studio       String?
+  source       String?     // manga, light novel, original, etc.
+  totalEpisodes Int?       // Total episode count
+  duration     String?     // Duration per episode
+  popularity   Int?
+  rank         Int?
+  members      Int?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  genres       AnimeGenre[]
+  episodes     Episode[]
+  favorites    Favorite[]
+
+  @@map("anime")
+}
+
+enum AnimeStatus {
+  ONGOING
+  COMPLETED
+}
+
+enum AnimeType {
+  TV
+  MOVIE
+  OVA
+  ONA
+  SPECIAL
+}
+
+// ============================================
+// Genre
+// ============================================
+
+model Genre {
+  id        String      @id @default(cuid())
+  malId     Int?        @unique // MyAnimeList Genre ID
+  name      String      @unique
+  slug      String      @unique
+
+  // Relations
+  animes    AnimeGenre[]
+
+  @@map("genres")
+}
+
+// Many-to-Many relation between Anime and Genre
+model AnimeGenre {
+  animeId   String
+  genreId   String
+  anime     Anime     @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  genre     Genre     @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([animeId, genreId])
+  @@map("anime_genres")
+}
+
+// ============================================
+// Episode & Streaming
+// ============================================
+
+model Episode {
+  id           String   @id @default(cuid())
+  animeId      String
+  number       Float
+  title        String?
+  synopsis     String?
+  thumbnail    String?
+  airDate      DateTime?
+  duration     String?
+  
+  // Relations
+  anime        Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+  servers      Server[]
+
+  @@map("episodes")
+}
+
+model Server {
+  id        String   @id @default(cuid())
+  episodeId String
+  name      String   // e.g., "MediaFire", "Google Drive"
+  url       String
+  quality   String   // 1080p, 720p, 480p
+
+  // Relations
+  episode   Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@map("servers")
+}
+
+// ============================================
+// User Interactions
+// ============================================
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  animeId   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  anime     Anime    @relation(fields: [animeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId])
+  @@map("favorites")
+}
+
+model WatchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  animeId   String
+  episodeId String?
+  progress  Int      @default(0) // Seconds or percentage
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, animeId])
+  @@map("watch_history")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  animeId   String
+  content   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}
+
+model Log {
+  id        Int      @id @default(autoincrement())
+  level     String   // ERROR, WARN, INFO
+  service   String   // AniCli, Jikan, Database, etc.
+  message   String   @db.Text
+  stack     String?  @db.Text
+  timestamp DateTime @default(now())
+}

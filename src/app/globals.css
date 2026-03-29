@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Dark Space Blue */
+    --background: 230 40% 5%;
+    --foreground: 210 40% 98%;
+
+    --card: 230 40% 7%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 230 40% 5%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Pink / Purple Gradient Primary */
+    --primary: 326 100% 55%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Secondary Darker Purple */
+    --secondary: 262 83% 58%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Cyan Accent */
+    --accent: 190 100% 50%;
+    --accent-foreground: 210 40% 98%;
+
+    --muted: 230 40% 12%;
+    --muted-foreground: 215 20% 65%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 230 40% 16%;
+    --input: 230 40% 16%;
+    --ring: 190 100% 50%;
+
+    --radius: 0.5rem;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    background-color: rgba(11, 0, 51, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .glass-card {
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  /* Hide scrollbar completely but allow scrolling */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+
+  .bg-pattern-logo {
+    background-image: url('/logo.png');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: min(80vw, 800px);
+    /* Responsive large size */
+    opacity: 0.1;
+    /* Subtle opacity so it doesn't distract */
+    filter: blur(4px);
+    /* Original logo colors, slightly blurry as requested */
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
