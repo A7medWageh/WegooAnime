@@ -125,30 +125,49 @@ export function CustomPlayer({
         };
     }, [videoUrl, autoPlay]);
 
-    // AniSkip Integration
+// Global cache to prevent redundant API calls when changing server/quality
+const skipTimesCache: Record<string, any> = {};
+
+    // Unified Skip Times Integration (AniSkip + Anime-Skip Fallback)
     useEffect(() => {
         if (!malId || !episodeNumber) return;
+        
+        const cacheKey = `${malId}-${episodeNumber}`;
+        if (skipTimesCache[cacheKey]) {
+            setSkipTimes(skipTimesCache[cacheKey]);
+            return;
+        }
+
         const fetchSkipTimes = async () => {
             try {
-                const res = await fetch(`https://api.aniskip.com/v2/skip-times/${malId}/${episodeNumber}?types[]=op&types[]=ed`);
+                const res = await fetch(`/api/skip?malId=${malId}&episode=${episodeNumber}`);
+                if (!res.ok) return;
                 const data = await res.json();
-                if (data.found && data.results) {
-                    const times: any = {};
-                    data.results.forEach((result: any) => {
-                        if (result.skipType === 'op') {
-                            times.op = { start: result.interval.startTime, end: result.interval.endTime };
-                        } else if (result.skipType === 'ed') {
-                            times.ed = { start: result.interval.startTime, end: result.interval.endTime };
-                        }
-                    });
-                    setSkipTimes(times);
+                if (data.times) {
+                    skipTimesCache[cacheKey] = data.times;
+                    setSkipTimes(data.times);
                 }
             } catch (err) {
-                console.warn('AniSkip failed', err);
+                console.warn('Skip API failed', err);
             }
         };
         fetchSkipTimes();
     }, [malId, episodeNumber]);
+
+    // Keyboard shortcut to skip intro/outro
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key.toLowerCase() === 's') {
+                if (skipTimes.op && currentTime >= skipTimes.op.start && currentTime <= skipTimes.op.end) {
+                    if (videoRef.current) videoRef.current.currentTime = skipTimes.op.end;
+                } else if (skipTimes.ed && currentTime >= skipTimes.ed.start && currentTime <= skipTimes.ed.end) {
+                    if (videoRef.current) videoRef.current.currentTime = skipTimes.ed.end;
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [currentTime, skipTimes]);
 
     const handleTimelineMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -450,6 +469,10 @@ export function CustomPlayer({
                                 </button>
                                 
                                 <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }} className="text-white/80 hover:text-white transition-transform hover:scale-110 drop-shadow-lg"><RotateCw className="w-5 h-5 sm:w-6 sm:h-6" /></button>
+                                
+                                <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 85; }} className="flex items-center gap-1.5 px-3 py-1.5 ml-2 sm:ml-4 rounded-full bg-white/10 hover:bg-white/20 hover:text-[#00F0FF] border border-white/10 text-white font-bold text-xs hover:scale-105 transition-all outline-none drop-shadow-lg">
+                                    <FastForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">تخطي</span> +85ث
+                                </button>
                                 
                                 <div className="hidden sm:flex items-center gap-3 group/volume ml-2">
                                     <button onClick={toggleMute} className="text-white hover:text-[#00F0FF] transition-colors drop-shadow-lg">

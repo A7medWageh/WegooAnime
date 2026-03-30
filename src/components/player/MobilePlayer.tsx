@@ -138,26 +138,30 @@ export function MobilePlayer({
         };
     }, [videoUrl, autoPlay]);
 
-    // AniSkip Integration
+// Global cache to prevent redundant API calls when changing server/quality
+const skipTimesCache: Record<string, any> = {};
+
+    // Unified Skip Times Integration (AniSkip + Anime-Skip Fallback)
     useEffect(() => {
         if (!malId || !episodeNumber) return;
+        
+        const cacheKey = `${malId}-${episodeNumber}`;
+        if (skipTimesCache[cacheKey]) {
+            setSkipTimes(skipTimesCache[cacheKey]);
+            return;
+        }
+
         const fetchSkipTimes = async () => {
             try {
-                const res = await fetch(`https://api.aniskip.com/v2/skip-times/${malId}/${episodeNumber}?types[]=op&types[]=ed`);
+                const res = await fetch(`/api/skip?malId=${malId}&episode=${episodeNumber}`);
+                if (!res.ok) return;
                 const data = await res.json();
-                if (data.found && data.results) {
-                    const times: any = {};
-                    data.results.forEach((result: any) => {
-                        if (result.skipType === 'op') {
-                            times.op = { start: result.interval.startTime, end: result.interval.endTime };
-                        } else if (result.skipType === 'ed') {
-                            times.ed = { start: result.interval.startTime, end: result.interval.endTime };
-                        }
-                    });
-                    setSkipTimes(times);
+                if (data.times) {
+                    skipTimesCache[cacheKey] = data.times;
+                    setSkipTimes(data.times);
                 }
             } catch (err) {
-                console.warn('AniSkip failed', err);
+                console.warn('Skip API failed', err);
             }
         };
         fetchSkipTimes();
@@ -319,11 +323,7 @@ export function MobilePlayer({
             return;
         }
 
-        const isIOS = checkIsIOS();
-        if (isIOS && videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
-            // Apple restricts hardware fullscreen to the native video element on iPhones.
-            (videoRef.current as any).webkitEnterFullscreen();
-        } else if (elem.requestFullscreen) {
+        if (elem.requestFullscreen) {
             elem.requestFullscreen().then(() => {
                 setIsFullscreen(true);
                 try {
@@ -495,6 +495,16 @@ export function MobilePlayer({
                 controls={false}
             />
 
+            <video
+                ref={previewVideoRef}
+                className="opacity-0 absolute pointer-events-none w-0 h-0"
+                crossOrigin="anonymous"
+                playsInline
+                preload="auto"
+                muted
+                onSeeked={handlePreviewSeeked}
+            />
+
             {/* Hardware Accelerated Brightness Overlay */}
             <div 
                 className="absolute inset-0 pointer-events-none z-[15]" 
@@ -595,6 +605,10 @@ export function MobilePlayer({
                                 </motion.button>
                                 
                                 <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }} className="text-white/80 hover:text-white transition-transform active:scale-90 drop-shadow-lg"><RotateCw className="w-5 h-5" /></button>
+
+                                <button onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime += 85; }} className="flex items-center gap-1.5 px-2.5 py-1.5 ml-2 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/10 text-white font-bold text-xs active:scale-95 transition-all outline-none drop-shadow-lg pointer-events-auto">
+                                    <FastForward className="w-3.5 h-3.5" /> +85ث
+                                </button>
                             </div>
 
                             <div className="flex items-center gap-2 sm:gap-4">                                
@@ -641,7 +655,7 @@ export function MobilePlayer({
 
             {/* Intelligent AniSkip Overlays - Mobile */}
             <AnimatePresence>
-                {isPlaying && skipTimes.op && currentTime >= skipTimes.op.start && currentTime <= skipTimes.op.end && scrubTime === null && (
+                {skipTimes.op && currentTime >= skipTimes.op.start && currentTime <= skipTimes.op.end && scrubTime === null && (
                     <motion.button
                         initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
                         onClick={(e) => { e.stopPropagation(); if (videoRef.current) { setIsWaiting(true); videoRef.current.currentTime = skipTimes.op!.end; videoRef.current.play().finally(() => setIsWaiting(false)); } }}
@@ -650,7 +664,7 @@ export function MobilePlayer({
                         <FastForward className="w-4 h-4" /> تخطي الانترو
                     </motion.button>
                 )}
-                {isPlaying && skipTimes.ed && currentTime >= skipTimes.ed.start && currentTime <= skipTimes.ed.end && scrubTime === null && (
+                {skipTimes.ed && currentTime >= skipTimes.ed.start && currentTime <= skipTimes.ed.end && scrubTime === null && (
                     <motion.button
                         initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
                         onClick={(e) => { e.stopPropagation(); if (videoRef.current) { setIsWaiting(true); videoRef.current.currentTime = skipTimes.ed!.end; videoRef.current.play().finally(() => setIsWaiting(false)); } }}

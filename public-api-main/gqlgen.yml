@@ -1,0 +1,205 @@
+schema:
+  - api/*.graphqls
+
+exec:
+  layout: single-file
+  package: graphql
+  filename: internal/graphql/server.generated.go
+
+model:
+  filename: internal/models.generated.go
+  package: internal
+
+resolver:
+  package: resolvers
+  filename: internal/graphql/resolvers/interfaces.go
+
+models:
+  ID:
+    model: anime-skip.com/public-api/internal/graphql/scalars.UUID
+  UInt:
+    model: anime-skip.com/public-api/internal/graphql/scalars.UInt
+  Episode:
+    fields:
+      createdBy:
+        resolver: true
+      updatedBy:
+        resolver: true
+      deletedBy:
+        resolver: true
+      show:
+        resolver: true
+      timestamps:
+        resolver: true
+      urls:
+        resolver: true
+      template:
+        resolver: true
+      userReports:
+        resolver: true
+  EpisodeUrl:
+    fields:
+      createdBy:
+        resolver: true
+      updatedBy:
+        resolver: true
+      deletedBy:
+        resolver: true
+      episode:
+        resolver: true
+      url:
+        resolver: true
+  Account:
+    fields:
+      adminOfShows:
+        resolver: true
+      preferences:
+        resolver: true
+  InputPreferences:
+    model: "map[string]interface{}"
+  Preferences:
+    fields:
+      createdBy:
+        resolver: true
+      updatedBy:
+        resolver: true
+      deletedBy:
+        resolver: true
+      user:
+        resolver: true
+  Show:
+    fields:
+      createdBy:
+        resolver: true
+      updatedBy:
+        resolver: true
+      deletedBy:
+        resolver: true
+      admins:
+        resolver: true
+      episodes:
+        resolver: true
+      templates:
+        resolver: true
+      externalLinks:
+        resolver: true
+      seasonCount:
+        resolver: true
+      episodeCount:
+        resolver: true
+  ShowAdmin:
+    fields:
+      createdBy:
+        resolver: true
+      updatedBy:
+        resolver: true
+      deletedBy:
+        resolver: true
+      show:
+        resolver: true
+      user:
+        resolver: true
+  Timestamp:
+    fields:
+      createdBy:
+        resolver: true
+      updatedBy:
+        resolver: true
+      deletedBy:
+        resolver: true
+      type:
+        resolver: true
+      episode:
+        resolver: true
+  ThirdPartyTimestamp:
+    fields:
+      type:
+        resolver: true
+  TimestampType:
+    fields:
+      createdBy:
+        resolver: true
+      updatedBy:
+        resolver: true
+      deletedBy:
+        resolver: true
+  User:
+    fields:
+      adminOfShows:
+        resolver: true
+  Template:
+    fields:
+      createdBy:
+        resolver: true
+      updatedBy:
+        resolver: true
+      deletedBy:
+        resolver: true
+      show:
+        resolver: true
+      sourceEpisode:
+        resolver: true
+      timestamps:
+        resolver: true
+      timestampIds:
+        resolver: true
+  TemplateTimestamp:
+    fields:
+      template:
+        resolver: true
+      timestamp:
+        resolver: true
+  ApiClient:
+    fields:
+      createdBy:
+        resolver: true
+      updatedBy:
+        resolver: true
+      deletedBy:
+        resolver: true
+      user:
+        resolver: true
+  ApiClientChanges:
+    model: "map[string]interface{}"
+  ExternalLink:
+    fields:
+      url:
+        resolver: true
+      show:
+        resolver: true
+      service:
+        resolver: true
+      serviceId:
+        resolver: true
+  TotalCounts:
+    fields:
+      episodes:
+        resolver: true
+      episodeUrls:
+        resolver: true
+      shows:
+        resolver: true
+      timestamps:
+        resolver: true
+      timestampTypes:
+        resolver: true
+      users:
+        resolver: true
+      templates:
+        resolver: true
+  UserReport:
+    fields:
+      createdBy:
+        resolver: true
+      updatedBy:
+        resolver: true
+      deletedBy:
+        resolver: true
+      timestamp:
+        resolver: true
+      episode:
+        resolver: true
+      episodeUrl:
+        resolver: true
+      show:
+        resolver: true
