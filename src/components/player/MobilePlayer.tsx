@@ -110,17 +110,18 @@ export function MobilePlayer({
         if (isM3u8 && Hls.isSupported() && !isIOS) {
             hls = new Hls({
                 enableWorker: true,
-                maxBufferLength: 5,
-                maxMaxBufferLength: 10,
-                maxBufferSize: 5 * 1024 * 1024,
+                maxBufferLength: 30, // Increased for stability
+                maxMaxBufferLength: 60,
+                maxBufferSize: 60 * 1024 * 1024, // 60MB
                 startLevel: 0,
-                backBufferLength: 0,
+                backBufferLength: 30,
                 lowLatencyMode: true,
                 nudgeOffset: 0.1,
-                nudgeMaxRetry: 10
+                nudgeMaxRetry: 15
             });
             hls.loadSource(videoUrl);
             hls.attachMedia(video);
+            
             hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
                 const availableQualities = data.levels.map((level, index) => ({
                     id: index, label: level.height + 'p'
@@ -129,6 +130,23 @@ export function MobilePlayer({
                 if (autoPlay) video.play().catch(() => setIsPlaying(false));
                 setIsWaiting(false);
             });
+
+            hls.on(Hls.Events.ERROR, (_, data) => {
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            hls?.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            hls?.recoverMediaError();
+                            break;
+                        default:
+                            setIsWaiting(true);
+                            break;
+                    }
+                }
+            });
+
             hlsRef.current = hls;
         } else {
             // Force native HLS on iOS or fallback
@@ -159,6 +177,30 @@ export function MobilePlayer({
             video.removeEventListener('webkitendfullscreen', handleIOSFullscreenEnd);
         };
     }, [videoUrl, autoPlay]);
+
+    // Stall Guardian: Monitor if video is stuck despite isPlaying being true
+    useEffect(() => {
+        let lastTime = 0;
+        let stallCount = 0;
+        const interval = setInterval(() => {
+            const video = videoRef.current;
+            if (!video || !isPlaying || isWaiting || showSettings) return;
+            
+            // If time hasn't changed but we are at the start and app thinks it's playing
+            if (video.currentTime === lastTime && video.currentTime < duration - 1) {
+                stallCount++;
+                if (stallCount > 3) {
+                    console.warn('[StallGuardian] Nudging video...');
+                    video.currentTime += 0.1; // Gentle nudge to skip bad frames
+                    stallCount = 0;
+                }
+            } else {
+                stallCount = 0;
+            }
+            lastTime = video.currentTime;
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [isPlaying, isWaiting, duration, showSettings]);
 
     const initThumbnailPreview = useCallback(() => {
         if (isThumbnailInit || !videoUrl) return;
