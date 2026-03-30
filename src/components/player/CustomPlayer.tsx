@@ -620,7 +620,10 @@ export function CustomPlayer({
                             <div className="flex items-center gap-4 sm:gap-5">
                                 <button onClick={async () => { try { if (videoRef.current !== document.pictureInPictureElement) await videoRef.current?.requestPictureInPicture(); else await document.exitPictureInPicture(); } catch {} }} className="hidden sm:block text-white hover:text-[#00F0FF] transition-all hover:scale-110 drop-shadow-lg p-2"><Monitor className="w-5 h-5 sm:w-6 sm:h-6" /></button>
                                 
-                                <button onClick={() => toggleFullscreen()} className="text-white hover:text-[#00F0FF] transition-all hover:scale-110 drop-shadow-lg p-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} 
+                                    className="text-white hover:text-[#00F0FF] transition-all hover:scale-110 drop-shadow-lg p-2 active:scale-95 flex items-center justify-center"
+                                >
                                     {isFullscreen ? <Minimize className="w-5 h-5 sm:w-6 sm:h-6" /> : <Maximize className="w-5 h-5 sm:w-6 sm:h-6" />}
                                 </button>
                                 

@@ -763,7 +763,10 @@ export function MobilePlayer({
                                     />
                                 </div>
 
-                                <button onClick={() => toggleFullscreen()} className="text-white hover:text-[#00F0FF] transition-all drop-shadow-lg p-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} 
+                                    className="text-white hover:text-[#00F0FF] transition-all drop-shadow-lg p-2 active:scale-95 flex items-center justify-center"
+                                >
                                     {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
                                 </button>
                                 
