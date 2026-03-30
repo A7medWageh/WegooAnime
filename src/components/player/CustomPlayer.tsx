@@ -90,7 +90,11 @@ export function CustomPlayer({
         const isIOS = checkIsIOS();
 
         if (isM3u8 && Hls.isSupported() && !isIOS) {
-            hls = new Hls();
+            hls = new Hls({
+                capLevelToPlayerSize: true,
+                maxBufferLength: 60,
+                maxMaxBufferLength: 600,
+            });
             hls.loadSource(videoUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -104,9 +108,18 @@ export function CustomPlayer({
 
             // Thumbnail Preview HLS
             if (previewVideo) {
-                previewHls = new Hls({ autoStartLoad: false });
+                previewHls = new Hls({ 
+                    autoStartLoad: false,
+                    startLevel: 0,
+                    capLevelToPlayerSize: true,
+                    maxBufferLength: 5,
+                    maxMaxBufferLength: 10
+                });
                 previewHls.loadSource(videoUrl);
                 previewHls.attachMedia(previewVideo);
+                previewHls.on(Hls.Events.MANIFEST_PARSED, () => {
+                     if (previewHls) previewHls.currentLevel = 0;
+                });
                 previewHlsRef.current = previewHls;
             }
         } else {
@@ -184,7 +197,7 @@ const skipTimesCache: Record<string, any> = {};
             if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
             seekTimeoutRef.current = setTimeout(() => {
                 if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
-            }, 250);
+            }, 100);
         }
     }, [duration]);
 
