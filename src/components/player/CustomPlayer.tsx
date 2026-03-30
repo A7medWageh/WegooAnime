@@ -186,14 +186,36 @@ export function CustomPlayer({
         const time = percent * duration;
         setHoverTime(time);
         
-        if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 1) {
-            if (previewHlsRef.current && !previewHlsRef.current.autoLevelEnabled) {
+        if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 0.5) {
+            setIsThumbnailReady(false);
+            if (previewHlsRef.current) {
                 previewHlsRef.current.startLoad();
             }
             if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
             seekTimeoutRef.current = setTimeout(() => {
                 if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
-            }, 100);
+            }, 50);
+        }
+    }, [duration]);
+
+    const handleTimelineTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const touch = e.touches[0];
+        let percent = (touch.clientX - rect.left) / rect.width;
+        percent = Math.max(0, Math.min(1, percent));
+        setHoverPercent(percent);
+        const time = percent * duration;
+        setHoverTime(time);
+        
+        if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 0.5) {
+            setIsThumbnailReady(false);
+            if (previewHlsRef.current) {
+                previewHlsRef.current.startLoad();
+            }
+            if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
+            seekTimeoutRef.current = setTimeout(() => {
+                if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
+            }, 50);
         }
     }, [duration]);
 
@@ -426,7 +448,9 @@ export function CustomPlayer({
                                 {/* Track */}
                                 <div className="relative flex-1 h-1.5 sm:h-2 bg-white/20 rounded-full cursor-pointer hover:h-3 transition-all outline-none flex items-center overflow-visible"
                                      onMouseMove={handleTimelineMouseMove}
-                                     onMouseLeave={() => setHoverTime(null)}>
+                                     onTouchMove={handleTimelineTouchMove}
+                                     onMouseLeave={() => setHoverTime(null)}
+                                     onTouchEnd={() => setHoverTime(null)}>
                                      
                                     {/* Thumbnail Hover Tooltip */}
                                     <AnimatePresence>
@@ -458,8 +482,11 @@ export function CustomPlayer({
                                         type="range" min="0" max="100" step="0.1" 
                                         value={isNaN(progress) ? 0 : progress} 
                                         onChange={handleSeek} 
+                                        onMouseMove={handleTimelineMouseMove}
+                                        onTouchMove={handleTimelineTouchMove}
                                         onMouseLeave={() => setHoverTime(null)}
                                         onMouseUp={() => setHoverTime(null)}
+                                        onTouchStart={handleTimelineTouchMove}
                                         onTouchEnd={() => setHoverTime(null)}
                                         onTouchCancel={() => setHoverTime(null)}
                                         onClick={(e) => {

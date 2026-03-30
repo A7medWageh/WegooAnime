@@ -248,14 +248,15 @@ export function MobilePlayer({
         const time = percent * duration;
         setScrubTime(time);
         
-        if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 1) {
-            if (previewHlsRef.current && !previewHlsRef.current.autoLevelEnabled) {
+        if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 0.5) {
+            setIsThumbnailReady(false);
+            if (previewHlsRef.current) {
                 previewHlsRef.current.startLoad();
             }
             if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
             seekTimeoutRef.current = setTimeout(() => {
                 if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
-            }, 100);
+            }, 50);
         }
         setShowControls(true);
         if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
@@ -277,14 +278,15 @@ export function MobilePlayer({
         setHoverTime(time);
         setHoverPos(percent * 100);
 
-        if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 1) {
-            if (previewHlsRef.current && !previewHlsRef.current.autoLevelEnabled) {
+        if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 0.5) {
+            setIsThumbnailReady(false);
+            if (previewHlsRef.current) {
                 previewHlsRef.current.startLoad();
             }
             if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
             seekTimeoutRef.current = setTimeout(() => {
                 if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
-            }, 100);
+            }, 50);
         }
     }, []);
 
