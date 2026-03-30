@@ -284,13 +284,13 @@ export default function WatchPage() {
                       <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#00F0FF] to-[#B026FF] flex items-center justify-center animate-pulse">
                         <Zap className="w-6 h-6 text-white" />
                       </div>
-                      <p className="text-xl font-black text-white mt-6 uppercase tracking-widest">{resolving ? 'RESOLVING SIGNAL' : 'INITIALIZING'}</p>
+                      <p className="text-xl font-black text-white mt-6 uppercase tracking-widest">{resolving ? 'جاري جلب الرابط...' : 'جاري التشغيل...'}</p>
                     </motion.div>
                   )}
                   {videoError && (
                     <motion.div className="absolute inset-0 z-20 bg-red-900/40 backdrop-blur-md flex flex-col items-center justify-center">
                       <AlertCircle className="w-16 h-16 text-red-500 mb-6" />
-                      <p className="text-xl font-black mb-6">SIGNAL INTERCEPTED</p>
+                      <p className="text-xl font-black mb-6 uppercase">فشل جلب الرابط</p>
                       <button onClick={() => fetchEpisode(episodeId)} className="px-8 py-3 bg-red-500 rounded-full font-bold">RETRY CONNECTION</button>
                     </motion.div>
                   )}
@@ -301,45 +301,45 @@ export default function WatchPage() {
                     {showSkipNotice && (
                       <motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-[200] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+                        className="absolute inset-0 z-[80] bg-black/85 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4"
                         dir="rtl"
                       >
                         <motion.div
-                          initial={{ scale: 0.85, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.85, opacity: 0 }}
-                          transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-                          className="w-full max-w-sm bg-[#05001A] border border-[#B026FF]/30 rounded-3xl p-6 flex flex-col gap-5 shadow-[0_0_60px_rgba(176,38,255,0.3)]"
+                          initial={{ scale: 0.85, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.85, opacity: 0 }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                          className="w-full max-w-[340px] bg-[#05001A] border border-[#B026FF]/30 rounded-3xl p-4 sm:p-6 flex flex-col gap-3 sm:gap-5 shadow-[0_0_60px_rgba(176,38,255,0.3)]"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-full bg-[#B026FF]/20 border border-[#B026FF]/40 flex items-center justify-center">
-                                <Info className="w-4 h-4 text-[#B026FF]" />
+                              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#B026FF]/20 border border-[#B026FF]/40 flex items-center justify-center">
+                                <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#B026FF]" />
                               </div>
-                              <span className="text-[#B026FF] font-black text-sm tracking-wide">ملاحظة مجتمعية</span>
+                              <span className="text-[#B026FF] font-black text-xs sm:text-sm tracking-wide">ملاحظة مجتمعية</span>
                             </div>
                             <button onClick={dismissSkipNotice} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all">
-                              <X className="w-4 h-4" />
+                              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             </button>
                           </div>
 
-                          <p className="text-white/70 text-sm leading-7 font-bold">
+                          <p className="text-white/70 text-xs sm:text-sm leading-6 sm:leading-7 font-bold">
                             زرار <span className="text-white font-black">"تخطي الانترو"</span> في المشغل{' '}
-                            <span className="text-[#00F0FF]">يُعلّم نظامنا الذكي</span> بوقت الانترو ويُساعد كل المشاهدين القادمين تلقائياً.
+                            <span className="text-[#00F0FF]">يُعلّم نظامنا</span> بوقت الانترو ويُساعد الجميع تلقائياً.
                           </p>
 
-                          <div className="flex flex-col gap-2.5">
-                            <div className="flex items-center gap-2.5 text-xs font-bold">
-                              <span className="w-5 h-5 rounded-full bg-green-500/15 flex items-center justify-center shrink-0"><span className="text-green-400 text-[10px]">✓</span></span>
+                          <div className="flex flex-col gap-2 sm:gap-2.5">
+                            <div className="flex items-center gap-2 sm:gap-2.5 text-[10px] sm:text-xs font-bold">
+                              <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-green-500/15 flex items-center justify-center shrink-0"><span className="text-green-400 text-[8px] sm:text-[10px]">✓</span></span>
                               <span className="text-white/60">اضغطه <span className="text-white/90">عند بداية موسيقى الانترو فقط</span></span>
                             </div>
-                            <div className="flex items-center gap-2.5 text-xs font-bold">
-                              <span className="w-5 h-5 rounded-full bg-red-500/15 flex items-center justify-center shrink-0"><span className="text-red-400 text-[10px]">✗</span></span>
-                              <span className="text-white/60">لا تضغطه في وقت عشوائي — سيُفسد التوقيت للجميع</span>
+                            <div className="flex items-center gap-2 sm:gap-2.5 text-[10px] sm:text-xs font-bold">
+                              <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-red-500/15 flex items-center justify-center shrink-0"><span className="text-red-400 text-[8px] sm:text-[10px]">✗</span></span>
+                              <span className="text-white/60">لا تضغطه في وقت عشوائي</span>
                             </div>
                           </div>
 
                           <button
                             onClick={dismissSkipNotice}
-                            className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#B026FF] to-[#7B00FF] text-white font-black text-sm hover:opacity-90 transition-all shadow-[0_0_20px_rgba(176,38,255,0.4)]"
+                            className="w-full py-2.5 sm:py-3 rounded-2xl bg-gradient-to-r from-[#B026FF] to-[#7B00FF] text-white font-black text-xs sm:text-sm hover:opacity-90 transition-all shadow-[0_0_20px_rgba(176,38,255,0.4)]"
                           >
                             فهمت! ابدأ المشاهدة 🎬
                           </button>
@@ -400,11 +400,11 @@ export default function WatchPage() {
                   <div className="flex items-center gap-3 relative z-10 w-full sm:w-auto">
                     <button onClick={() => navigate('prev')} disabled={data.episodes.findIndex(e => e.id === data.id) <= 0}
                       className="flex-1 sm:flex-none flex justify-center items-center gap-3 px-6 py-3 rounded-full text-sm font-bold bg-white/5 border border-white/10 hover:border-white/30 disabled:opacity-30 transition-all">
-                      <ChevronRight className="w-4 h-4" /> العودة
+                      <ChevronRight className="w-4 h-4" /> الحلقة السابقة
                     </button>
                     <button onClick={() => navigate('next')} disabled={data.episodes.findIndex(e => e.id === data.id) >= data.episodes.length - 1}
                       className="flex-1 sm:flex-none flex justify-center items-center gap-3 px-8 py-3 rounded-full text-sm font-black bg-[#00F0FF] text-[#030014] shadow-lg disabled:opacity-30 transition-all">
-                      تقدم الإقلاع <ChevronLeft className="w-4 h-4" />
+                      الحلقة التالية <ChevronLeft className="w-4 h-4" />
                     </button>
                   </div>
 

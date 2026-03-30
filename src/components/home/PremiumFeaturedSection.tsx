@@ -34,14 +34,8 @@ export function PremiumFeaturedSection({
                     viewport={{ once: true }}
                 >
                     <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#00F0FF] to-[#0055FF] text-white shadow-[0_0_40px_rgba(0,240,255,0.5)] relative overflow-hidden">
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{
-                                duration: 10,
-                                repeat: Number.POSITIVE_INFINITY,
-                                ease: "linear",
-                            }}
-                            className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_0_340deg,white_360deg)] opacity-30"
+                        <div
+                            className="absolute inset-[-50%] bg-[conic-gradient(from_0deg,transparent_0_340deg,white_360deg)] opacity-30 animate-spin-slow"
                         />
                         <Icon className="w-8 h-8 relative z-10" />
                     </div>

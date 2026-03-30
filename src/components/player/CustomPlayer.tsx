@@ -24,6 +24,9 @@ interface CustomPlayerProps {
     episodeNumber?: number;
 }
 
+// Global cache to prevent redundant API calls when changing server/quality
+export const skipTimesCache: Record<string, any> = {};
+
 const formatTime = (time: number) => {
     if (isNaN(time)) return '00:00';
     const h = Math.floor(time / 3600);
@@ -131,9 +134,6 @@ export function CustomPlayer({
         };
     }, [videoUrl, autoPlay]);
 
-// Global cache to prevent redundant API calls when changing server/quality
-const skipTimesCache: Record<string, any> = {};
-
     // Unified Skip Times Integration (AniSkip + Anime-Skip Fallback)
     useEffect(() => {
         if (!malId || !episodeNumber) return;
@@ -147,7 +147,10 @@ const skipTimesCache: Record<string, any> = {};
         const fetchSkipTimes = async () => {
             try {
                 const res = await fetch(`/api/skip?malId=${malId}&episode=${episodeNumber}`);
-                if (!res.ok) return;
+                if (!res.ok) {
+                    skipTimesCache[cacheKey] = { op: null, ed: null }; // Cache failure
+                    return;
+                }
                 const data = await res.json();
                 if (data.times) {
                     skipTimesCache[cacheKey] = data.times;

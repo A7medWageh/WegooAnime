@@ -26,13 +26,11 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid IDs' }, { status: 400 });
         }
 
-        // Use a string-based unique key (store malId as hash for consistency)
-        const malIdHash = malIdStr.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
 
         const updated = await prisma.skipTimeReport.upsert({
             where: {
-                malId_episode_type_startTime_endTime: {
-                    malId: malIdHash,
+                skip_report_uid: {
+                    malId: malIdStr,
                     episode: epNum,
                     type: type,
                     startTime: roundedStart,
@@ -43,7 +41,7 @@ export async function POST(request: Request) {
                 occurrences: { increment: 1 }
             },
             create: {
-                malId: malIdHash,
+                malId: malIdStr,
                 episode: epNum,
                 type: type,
                 startTime: roundedStart,
@@ -52,7 +50,7 @@ export async function POST(request: Request) {
             }
         });
 
-        return NextResponse.json({ success: true, report: updated, malIdUsed: malIdHash });
+        return NextResponse.json({ success: true, report: updated, malIdUsed: malIdStr });
     } catch (e: any) {
         console.error('Skip Report Error:', e);
         return NextResponse.json({ error: 'Failed to report skip time', detail: e.message }, { status: 500 });

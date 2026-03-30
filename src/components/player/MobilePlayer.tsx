@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Hls from 'hls.js';
+import { skipTimesCache } from './CustomPlayer';
 
 interface MobilePlayerProps {
     videoUrl: string;
@@ -148,12 +149,22 @@ export function MobilePlayer({
     useEffect(() => {
         if (!malId || !episodeNumber) return;
         
+        const cacheKey = `${malId}-${episodeNumber}`;
+        if (skipTimesCache[cacheKey]) {
+            setSkipTimes(skipTimesCache[cacheKey]);
+            return;
+        }
+
         const fetchSkipTimes = async () => {
             try {
                 const res = await fetch(`/api/skip?malId=${malId}&episode=${episodeNumber}`, { cache: 'no-store' });
-                if (!res.ok) return;
+                if (!res.ok) {
+                    skipTimesCache[cacheKey] = { op: null, ed: null }; // Cache "not found"
+                    return;
+                }
                 const data = await res.json();
                 if (data.times) {
+                    skipTimesCache[cacheKey] = data.times;
                     setSkipTimes(data.times);
                     console.log('[Skip] Loaded from source:', data.source, data.times);
                 }

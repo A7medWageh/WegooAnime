@@ -211,7 +211,7 @@ model Log {
 
 model SkipTimeReport {
   id          String   @id @default(cuid())
-  malId       Int
+  malId       String
   episode     Float
   type        String   // "op" or "ed"
   startTime   Int      // Rounded to nearest 5 seconds for bucketing
@@ -221,6 +221,6 @@ model SkipTimeReport {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@unique([malId, episode, type, startTime, endTime])
+  @@unique([malId, episode, type, startTime, endTime], name: "skip_report_uid")
   @@map("skip_time_reports")
 }

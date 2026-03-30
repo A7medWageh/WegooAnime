@@ -7,19 +7,33 @@ import {
   getEpisodes, getServers, extractMediafire, cleanBrandText,
 } from '@/lib/anicli';
 import { getAnimeByMalId, searchJikan, jikanBanner, jikanCover, getAiringNow, getJikanEpisodeVideos } from '@/lib/jikan';
+import prisma from '@/lib/prisma';
 
 const IMG = (url: string | undefined | null) =>
   url ? `/api/image-proxy?url=${encodeURIComponent(url)}` : null;
+
+// Simple global in-memory cache for production-like speed in dev
+const _cache: any = {
+  translations: new Map(),
+  anime: new Map(),
+  episodes: new Map(),
+};
+const CACHE_TTL = 3600 * 1000; // 1 hour
 
 const PLACEHOLDER_IMG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
 // Built-in simple free Google Translate API fetcher
 async function translateToArabic(text: string): Promise<string> {
   if (!text) return '';
+  const cached = _cache.translations.get(text);
+  if (cached && Date.now() - cached.time < CACHE_TTL) return cached.value;
+
   try {
     const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ar&dt=t&q=${encodeURIComponent(text)}`);
     const data = await res.json();
-    return data[0].map((item: any) => item[0]).join('');
+    const result = data[0].map((item: any) => item[0]).join('');
+    _cache.translations.set(text, { value: result, time: Date.now() });
+    return result;
   } catch (err) {
     console.error('Translation error:', err);
     return text;
@@ -86,8 +100,80 @@ export async function GET(request: NextRequest) {
       const q = sp.get('q');
       const limit = parseInt(sp.get('limit') || '40');
       if (q) {
-        const results = await aniSearch(q);
-        return NextResponse.json({ success: true, data: await Promise.all(results.slice(0, limit).map(toCard)) });
+        // Simple normalization for better Arabic & English matching
+        const norm = (s: string) => s ? s.toLowerCase().trim()
+          .replace(/[أإآا]/g, 'ا').replace(/[ىي]/g, 'ي').replace(/[ةه]/g, 'ه')
+          .replace(/[\u064B-\u0652]/g, '') // remove Tashkeel
+          .replace(/[^a-z0-9\u0600-\u06FF]/gi, ' ')
+          .replace(/\s+/g, ' ').trim() : '';
+
+        const normalizedQuery = norm(q);
+
+        // 1. Local Database Search
+        // We fetch more than limit to allow ranking and filtering in JS
+        const localResults = await prisma.anime.findMany({
+          where: {
+            OR: [
+              { title: { contains: q, mode: 'insensitive' } },
+              { titleEnglish: { contains: q, mode: 'insensitive' } },
+              { titleJapanese: { contains: q, mode: 'insensitive' } },
+              { slug: { contains: q, mode: 'insensitive' } },
+              // Match against the space-normalized query as well
+              { title: { contains: normalizedQuery, mode: 'insensitive' } },
+              { titleEnglish: { contains: normalizedQuery, mode: 'insensitive' } }
+            ]
+          },
+          take: 100 
+        });
+
+        const mappedLocal = localResults.map(a => {
+          const tNorm = norm(a.title);
+          const eNorm = norm(a.titleEnglish || '');
+          const sNorm = norm(a.slug);
+          
+          let score = 0;
+          // Exact matches get highest score
+          if (tNorm === normalizedQuery || eNorm === normalizedQuery || sNorm === normalizedQuery) score = 100;
+          // Starts with gets high score
+          else if (tNorm.startsWith(normalizedQuery) || eNorm.startsWith(normalizedQuery)) score = 80;
+          // Contains gets normal score
+          else if (tNorm.includes(normalizedQuery) || eNorm.includes(normalizedQuery)) score = 50;
+          else score = 10;
+
+          return {
+            id: a.slug,
+            title: a.title,
+            slug: a.slug,
+            image: a.coverImage ? (a.coverImage.startsWith('http') ? IMG(a.coverImage) : a.coverImage) : PLACEHOLDER_IMG,
+            type: a.type,
+            rating: a.rating || 'N/A',
+            score
+          };
+        });
+
+        // 2. External Search (for discovery - if local results are few or low quality)
+        let externalResults: any[] = [];
+        if (mappedLocal.filter(l => l.score > 40).length < 3) {
+           const results = await aniSearch(q).catch(() => []);
+           externalResults = await Promise.all(results.slice(0, 10).map(toCard));
+        }
+
+        // 3. Merge & Ranking
+        const combined = [...mappedLocal];
+        externalResults.forEach(ext => {
+           if (!combined.some(loc => loc.id === ext.id)) {
+             // External results default to a decent score
+             combined.push({ ...ext, score: 30 });
+           }
+        });
+
+        // Final sort by relevance score
+        const finalResults = combined
+          .sort((a, b) => b.score - a.score)
+          .slice(0, limit)
+          .map(({ score, ...rest }) => rest);
+
+        return NextResponse.json({ success: true, data: finalResults });
       }
 
       const genre = sp.get('genre');
@@ -154,6 +240,9 @@ export async function GET(request: NextRequest) {
     if (action === 'anime') {
       let slug = sp.get('slug');
       if (!slug) return NextResponse.json({ success: false, error: 'Slug required' }, { status: 400 });
+
+      const cached = _cache.anime.get(slug);
+      if (cached && Date.now() - cached.time < CACHE_TTL) return NextResponse.json({ success: true, data: cached.value });
 
       let jikan: any = null;
       let originalSlug = slug;
@@ -223,9 +312,7 @@ export async function GET(request: NextRequest) {
       }
 
       const PLACEHOLDER_IMG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-      return NextResponse.json({
-        success: true,
-        data: {
+      const resultData = {
           id: slug, slug,
           title: jikan?.title || jikan?.title_english || aniData?.title_en || formattedSearchQuery,
           title_jp: jikan?.title_japanese || aniData?.title_jp || null,
@@ -254,21 +341,27 @@ export async function GET(request: NextRequest) {
               image: jEp?.images?.jpg?.image_url ? IMG(jEp.images.jpg.image_url) : undefined,
             };
           }),
-        },
-      });
+      };
+
+      _cache.anime.set(slug, { value: resultData, time: Date.now() });
+      return NextResponse.json({ success: true, data: resultData });
     }
 
     // ── EPISODE ──────────────────────────────────────────
     if (action === 'episode') {
-      let id = sp.get('id');
-      if (!id) return NextResponse.json({ success: false, error: 'ID required' }, { status: 400 });
+      const idParam = sp.get('id');
+      if (!idParam) return NextResponse.json({ success: false, error: 'ID required' }, { status: 400 });
+
+      const cached = _cache.episodes.get(idParam);
+      if (cached && Date.now() - cached.time < CACHE_TTL) return NextResponse.json({ success: true, data: cached.value });
 
       let animeId = '';
       let epNum = '1';
+      let finalId = idParam;
 
-      if (!id.includes('--')) {
+      if (!idParam.includes('--')) {
         // It's an Anime Slug or MAL ID, NOT an episode ID. We must find its first episode.
-        let slug = id;
+        let slug = idParam;
         if (!isNaN(Number(slug))) {
           const jikan = await getAnimeByMalId(slug).catch(() => null);
           if (jikan) {
@@ -298,9 +391,9 @@ export async function GET(request: NextRequest) {
           const firstEp = episodes.reduce((prev: any, curr: any) => parseFloat(prev.number) < parseFloat(curr.number) ? prev : curr, episodes[0]);
           epNum = firstEp ? firstEp.number.toString() : '1';
         }
-        id = `${animeId}--${epNum}`; // reconstruct for the response
+        finalId = `${animeId}--${epNum}`; // reconstruct for the response
       } else {
-        const parts = id.split('--');
+        const parts = idParam.split('--');
         animeId = parts.slice(0, -1).join('--');
         epNum = parts[parts.length - 1];
       }
@@ -359,10 +452,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: id || '', number: currentEpObj?.displayNum || parseFloat(epNum) || 1,
+      const resultData = {
+          id: finalId || '', number: currentEpObj?.displayNum || parseFloat(epNum) || 1,
           title: currentEpObj ? `${currentEpObj.type} ${currentEpObj.displayNum}` : `الحلقة ${epNum}`,
           anime: { 
             id: animeId, 
@@ -373,8 +464,10 @@ export async function GET(request: NextRequest) {
           },
           episodes: episodes.map(ep => ({ id: `${animeId}--${ep.number}`, number: ep.displayNum, title: `${ep.type} ${ep.displayNum}` })),
           availableSources, hasDirectLinks: availableSources.length > 0,
-        },
-      });
+      };
+
+      _cache.episodes.set(idParam, { value: resultData, time: Date.now() });
+      return NextResponse.json({ success: true, data: resultData });
     }
 
     // ── STREAM ───────────────────────────────────────────

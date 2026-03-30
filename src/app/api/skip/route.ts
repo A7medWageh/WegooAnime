@@ -16,12 +16,12 @@ export async function GET(request: Request) {
         const epNum = parseFloat(String(episode));
         const malIdHash = malIdStr.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
         
-        if (malIdHash && !isNaN(epNum)) {
+        if (malIdStr && !isNaN(epNum)) {
             const skipReports = await prisma.skipTimeReport.findMany({
                 where: {
-                    malId: malIdHash,
+                    malId: malIdStr,
                     episode: epNum,
-                    occurrences: { gte: 2 } // Require 2+ users to confirm
+                    occurrences: { gte: 1 } // Instant visibility for now
                 },
                 orderBy: { occurrences: 'desc' }
             });

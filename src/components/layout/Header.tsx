@@ -37,26 +37,34 @@ export function Header() {
 
   // Close search when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setIsSearchOpen(false);
       }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
+    };
+    if (isSearchOpen) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [isSearchOpen]);
 
   // Real-time search fetching
   useEffect(() => {
-    if (!searchQuery.trim()) { setResults([]); return; }
+    if (!searchQuery.trim()) {
+      setResults([]);
+      setIsSearching(false);
+      return;
+    }
+    
     setIsSearching(true);
     const timer = setTimeout(() => {
-      fetch(`/api/anime?action=search&q=${encodeURIComponent(searchQuery)}`)
+      fetch(`/api/anime?action=search&limit=5&q=${encodeURIComponent(searchQuery)}`)
         .then(res => res.json())
         .then(data => {
-          if (data.success) setResults(data.data.slice(0, 5));
-        }).finally(() => setIsSearching(false));
-    }, 500);
+          if (data.success) setResults(data.data);
+        })
+        .catch(err => console.error("Search fetch error:", err))
+        .finally(() => setIsSearching(false));
+    }, 400);
+
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -69,13 +77,10 @@ export function Header() {
       dir="rtl"
     >
       <motion.div
-        className="pointer-events-auto relative flex items-center justify-between w-full max-w-7xl px-4 sm:px-5 lg:px-6 py-2.5 rounded-[2rem] sm:rounded-full border border-white/10 shadow-2xl transition-all duration-500"
+        className={`pointer-events-auto relative flex items-center justify-between w-full max-w-7xl px-4 sm:px-5 lg:px-6 py-2.5 rounded-[2rem] sm:rounded-full border border-white/10 shadow-2xl transition-all duration-500 will-change-[background-color,backdrop-filter] ${
+          isScrolled ? 'bg-[#030014]/85 backdrop-blur-lg shadow-[#00F0FF]/15' : 'bg-[#030014]/50 backdrop-blur-md shadow-black/50'
+        }`}
         initial={false}
-        animate={{
-          backgroundColor: isScrolled ? 'rgba(3, 0, 20, 0.85)' : 'rgba(3, 0, 20, 0.5)',
-          backdropFilter: isScrolled ? 'blur(24px)' : 'blur(12px)',
-          boxShadow: isScrolled ? '0 10px 40px -10px rgba(0, 240, 255, 0.15)' : '0 10px 40px -10px rgba(0,0,0,0.5)'
-        }}
       >
         <Link href="/" className="flex-shrink-0">
           <Logo />
@@ -130,6 +135,7 @@ export function Header() {
         <AnimatePresence>
           {isSearchOpen && (
             <motion.div
+              ref={searchRef}
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -139,7 +145,7 @@ export function Header() {
                 <input
                   type="text"
                   autoFocus
-                  placeholder="ابحث في المجرة..."
+                  placeholder="ابحث عن الأنمي المفضل لديك..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -151,6 +157,14 @@ export function Header() {
                   className="w-full h-12 bg-black/80 border border-[#00F0FF]/50 rounded-2xl px-12 text-base text-white focus:outline-none focus:ring-1 focus:ring-[#00F0FF] placeholder:text-gray-500 backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)]"
                 />
                 <Search className="w-5 h-5 text-gray-400 absolute right-4 top-1/2 -translate-y-1/2" />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
               {/* Real-time Results Dropdown */}
