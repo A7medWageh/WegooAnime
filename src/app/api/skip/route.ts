@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -9,7 +10,40 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Missing malId or episode' }, { status: 400 });
     }
 
-    // 1. Primary Source: AniSkip
+    // 0. Primary Internal Database Source (Crowdsourced)
+    try {
+        const malIdStr = String(malId).trim();
+        const epNum = parseFloat(String(episode));
+        const malIdHash = malIdStr.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+        
+        if (malIdHash && !isNaN(epNum)) {
+            const skipReports = await prisma.skipTimeReport.findMany({
+                where: {
+                    malId: malIdHash,
+                    episode: epNum,
+                    occurrences: { gte: 2 } // Require 2+ users to confirm
+                },
+                orderBy: { occurrences: 'desc' }
+            });
+
+            if (skipReports.length > 0) {
+                const times: any = {};
+                const opReport = skipReports.find((r: any) => r.type === 'op');
+                const edReport = skipReports.find((r: any) => r.type === 'ed');
+
+                if (opReport) times.op = { start: opReport.startTime, end: opReport.endTime };
+                if (edReport) times.ed = { start: edReport.startTime, end: edReport.endTime };
+
+                if (times.op || times.ed) {
+                    return NextResponse.json({ source: 'crowdsourced', times });
+                }
+            }
+        }
+    } catch (e) {
+        console.warn('Database skip times failed:', e);
+    }
+
+    // 1. External Source 1: AniSkip
     try {
         const res = await fetch(`https://api.aniskip.com/v2/skip-times/${malId}/${episode}?types=op&types=ed&episodeLength=0`, {
             next: { revalidate: 3600 } // Cache for 1 hour to prevent rate limiting

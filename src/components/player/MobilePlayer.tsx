@@ -144,27 +144,18 @@ export function MobilePlayer({
         };
     }, [videoUrl, autoPlay]);
 
-// Global cache to prevent redundant API calls when changing server/quality
-const skipTimesCache: Record<string, any> = {};
-
     // Unified Skip Times Integration (AniSkip + Anime-Skip Fallback)
     useEffect(() => {
         if (!malId || !episodeNumber) return;
         
-        const cacheKey = `${malId}-${episodeNumber}`;
-        if (skipTimesCache[cacheKey]) {
-            setSkipTimes(skipTimesCache[cacheKey]);
-            return;
-        }
-
         const fetchSkipTimes = async () => {
             try {
-                const res = await fetch(`/api/skip?malId=${malId}&episode=${episodeNumber}`);
+                const res = await fetch(`/api/skip?malId=${malId}&episode=${episodeNumber}`, { cache: 'no-store' });
                 if (!res.ok) return;
                 const data = await res.json();
                 if (data.times) {
-                    skipTimesCache[cacheKey] = data.times;
                     setSkipTimes(data.times);
+                    console.log('[Skip] Loaded from source:', data.source, data.times);
                 }
             } catch (err) {
                 console.warn('Skip API failed', err);
@@ -329,11 +320,14 @@ const skipTimesCache: Record<string, any> = {};
             return;
         }
 
-        const isIOS = checkIsIOS();
-        if (isIOS && videoRef.current && (videoRef.current as any).webkitEnterFullscreen) {
-            // Apple restricts hardware fullscreen to the native video element on iPhones.
-            (videoRef.current as any).webkitEnterFullscreen();
-        } else if (elem.requestFullscreen) {
+        const isMobileIOS = /iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+        const video = videoRef.current as any;
+        if (isMobileIOS && video && video.webkitEnterFullscreen) {
+            video.webkitEnterFullscreen();
+            return;
+        }
+
+        if (elem.requestFullscreen) {
             elem.requestFullscreen().then(() => {
                 setIsFullscreen(true);
                 try {
@@ -390,13 +384,7 @@ const skipTimesCache: Record<string, any> = {};
         const screenWidth = window.innerWidth;
 
         if (Math.abs(deltaY) > 20) {
-            if (touchStartPos.x < screenWidth * 0.5) {
-                let newB = brightness + (deltaY * 0.5);
-                newB = Math.max(30, Math.min(150, newB));
-                setBrightness(newB);
-                setTouchStartPos({ x: touch.clientX, y: touch.clientY });
-                showIndicatorMsg('brightness', Math.round(newB));
-            } else {
+            if (touchStartPos.x >= screenWidth * 0.5) {
                 let newV = volume + (deltaY * 0.005);
                 newV = Math.max(0, Math.min(1, newV));
                 setVolume(newV);
@@ -590,7 +578,14 @@ const skipTimesCache: Record<string, any> = {};
                                         onTouchCancel={handleSeekTouchEnd}
                                         onMouseLeave={handleSeekTouchEnd}
                                         onMouseUp={handleSeekTouchEnd}
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            let p = (e.clientX - rect.left) / rect.width;
+                                            p = Math.max(0, Math.min(1, p));
+                                            if(videoRef.current) videoRef.current.currentTime = p * duration;
+                                            setProgress(p * 100);
+                                        }}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 pointer-events-auto" 
                                     />
                                 </div>
@@ -599,7 +594,7 @@ const skipTimesCache: Record<string, any> = {};
 
                         {/* Bottom Actions Row */}
                         <div className="flex items-center justify-between pointer-events-auto">
-                            <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2 sm:gap-4">
                                 <button onClick={() => { if (videoRef.current) videoRef.current.currentTime -= 10; }} className="text-white/80 hover:text-white transition-transform active:scale-90 drop-shadow-lg"><RotateCcw className="w-5 h-5" /></button>
                                 
                                 <motion.button
@@ -618,8 +613,22 @@ const skipTimesCache: Record<string, any> = {};
                                 
                                 <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }} className="text-white/80 hover:text-white transition-transform active:scale-90 drop-shadow-lg"><RotateCw className="w-5 h-5" /></button>
 
-                                <button onClick={(e) => { e.stopPropagation(); if (videoRef.current) videoRef.current.currentTime += 85; }} className="flex items-center gap-1.5 px-2.5 py-1.5 ml-2 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/10 text-white font-bold text-xs active:scale-95 transition-all outline-none drop-shadow-lg pointer-events-auto">
-                                    <FastForward className="w-3.5 h-3.5" /> +85ث
+                                <button onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    if (videoRef.current) {
+                                        const cTime = videoRef.current.currentTime;
+                                        videoRef.current.currentTime += 85;
+                                        if (cTime < 300 && episodeNumber && malId) {
+                                            const reportId = String(malId);
+                                            fetch('/api/skip/report', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ malId: reportId, episode: episodeNumber, type: 'op', startTime: Math.floor(cTime), endTime: Math.floor(cTime + 85) })
+                                            }).then(r => r.json()).then(d => console.log('[Skip Report]', d)).catch(console.error);
+                                        }
+                                    }
+                                }} className="flex items-center gap-1.5 px-2 py-1.5 ml-1 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 border border-white/10 text-white font-bold text-[10px] sm:text-xs active:scale-95 transition-all outline-none drop-shadow-lg pointer-events-auto">
+                                    <FastForward className="w-3.5 h-3.5" /> تخطي الانترو
                                 </button>
                             </div>
 
@@ -642,7 +651,7 @@ const skipTimesCache: Record<string, any> = {};
                                             setVolume(newV);
                                             if (videoRef.current) videoRef.current.volume = newV;
                                         }} 
-                                        className="w-12 sm:w-16 accent-[#00F0FF] h-1 bg-white/20 rounded-full outline-none cursor-pointer" 
+                                        className="w-12 sm:w-16 hidden sm:block accent-[#00F0FF] h-1 bg-white/20 rounded-full outline-none cursor-pointer" 
                                     />
                                 </div>
 
@@ -738,6 +747,17 @@ const skipTimesCache: Record<string, any> = {};
                                                 {rate}x
                                             </button>
                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* Brightness Control Slider */}
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex items-center justify-between text-[11px] text-white/50 font-bold"><span>مستوى الإضاءة</span><span className="text-[#B026FF]">{Math.round(brightness)}%</span></div>
+                                    <div className="flex items-center gap-3">
+                                        <Sun className="w-4 h-4 text-white/40" />
+                                        <input type="range" min="30" max="150" step="1" value={brightness} onChange={(e) => {
+                                            setBrightness(Number(e.target.value));
+                                        }} className="flex-1 accent-[#B026FF] bg-white/10 h-1.5 rounded-full outline-none" />
                                     </div>
                                 </div>
 

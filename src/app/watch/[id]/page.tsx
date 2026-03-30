@@ -56,6 +56,9 @@ export default function WatchPage() {
   const [videoError, setVideoError] = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);
   const [startTime, setStartTime] = useState(0);
+  const [showSkipNotice, setShowSkipNotice] = useState(true);
+
+  const dismissSkipNotice = () => setShowSkipNotice(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
@@ -210,9 +213,45 @@ export default function WatchPage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#030014]">
-      <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }} transition={{ repeat: Infinity, duration: 2 }} className="w-24 h-24 rounded-full border border-[#00F0FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.4)]">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#030014] gap-10 px-6" dir="rtl">
+      {/* Spinner */}
+      <motion.div
+        animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+        transition={{ repeat: Infinity, duration: 2 }}
+        className="w-24 h-24 rounded-full border border-[#00F0FF] flex items-center justify-center shadow-[0_0_30px_rgba(0,240,255,0.4)]"
+      >
         <Zap className="w-8 h-8 text-[#00F0FF] animate-pulse" />
+      </motion.div>
+
+      <p className="text-white/40 text-sm font-bold tracking-widest uppercase">جاري تحميل الحلقة...</p>
+
+      {/* Skip Intro Notice */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.6 }}
+        className="w-full max-w-lg bg-[#B026FF]/5 border border-[#B026FF]/25 rounded-3xl p-6 flex flex-col gap-4 shadow-[0_0_40px_rgba(176,38,255,0.15)]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-[#B026FF]/20 border border-[#B026FF]/40 flex items-center justify-center shrink-0">
+            <span className="text-[#B026FF] text-base font-black">!</span>
+          </div>
+          <span className="text-[#B026FF] font-black text-base tracking-wide">ملاحظة مجتمعية مهمة</span>
+        </div>
+        <p className="text-white/60 text-sm leading-7 font-bold">
+          زرار <span className="text-white font-black">"تخطي الانترو"</span> الموجود في المشغل{' '}
+          <span className="text-[#00F0FF]">يُعلّم نظامنا الذكي بوقت الانترو</span> تلقائياً ويُساعد كل المشاهدين القادمين.
+        </p>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start gap-2 text-xs text-white/40 font-bold">
+            <span className="text-green-400 mt-0.5">✓</span>
+            <span>اضغطه <span className="text-white/70">عند بداية موسيقى الانترو فقط</span></span>
+          </div>
+          <div className="flex items-start gap-2 text-xs text-white/40 font-bold">
+            <span className="text-red-400 mt-0.5">✗</span>
+            <span>لا تضغطه في أي وقت عشوائي — سيُفسد التوقيت للجميع</span>
+          </div>
+        </div>
       </motion.div>
     </div>
   );
@@ -258,6 +297,59 @@ export default function WatchPage() {
                 </AnimatePresence>
 
                 {videoUrl && isMobile !== null && (
+                  <AnimatePresence>
+                    {showSkipNotice && (
+                      <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-[200] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+                        dir="rtl"
+                      >
+                        <motion.div
+                          initial={{ scale: 0.85, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.85, opacity: 0 }}
+                          transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+                          className="w-full max-w-sm bg-[#05001A] border border-[#B026FF]/30 rounded-3xl p-6 flex flex-col gap-5 shadow-[0_0_60px_rgba(176,38,255,0.3)]"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-[#B026FF]/20 border border-[#B026FF]/40 flex items-center justify-center">
+                                <Info className="w-4 h-4 text-[#B026FF]" />
+                              </div>
+                              <span className="text-[#B026FF] font-black text-sm tracking-wide">ملاحظة مجتمعية</span>
+                            </div>
+                            <button onClick={dismissSkipNotice} className="p-1.5 rounded-full bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          <p className="text-white/70 text-sm leading-7 font-bold">
+                            زرار <span className="text-white font-black">"تخطي الانترو"</span> في المشغل{' '}
+                            <span className="text-[#00F0FF]">يُعلّم نظامنا الذكي</span> بوقت الانترو ويُساعد كل المشاهدين القادمين تلقائياً.
+                          </p>
+
+                          <div className="flex flex-col gap-2.5">
+                            <div className="flex items-center gap-2.5 text-xs font-bold">
+                              <span className="w-5 h-5 rounded-full bg-green-500/15 flex items-center justify-center shrink-0"><span className="text-green-400 text-[10px]">✓</span></span>
+                              <span className="text-white/60">اضغطه <span className="text-white/90">عند بداية موسيقى الانترو فقط</span></span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-xs font-bold">
+                              <span className="w-5 h-5 rounded-full bg-red-500/15 flex items-center justify-center shrink-0"><span className="text-red-400 text-[10px]">✗</span></span>
+                              <span className="text-white/60">لا تضغطه في وقت عشوائي — سيُفسد التوقيت للجميع</span>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={dismissSkipNotice}
+                            className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#B026FF] to-[#7B00FF] text-white font-black text-sm hover:opacity-90 transition-all shadow-[0_0_20px_rgba(176,38,255,0.4)]"
+                          >
+                            فهمت! ابدأ المشاهدة 🎬
+                          </button>
+                        </motion.div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                )}
+
+                {videoUrl && isMobile !== null && (
                   isMobile ? (
                     <MobilePlayer
                       videoUrl={videoUrl}
@@ -265,7 +357,7 @@ export default function WatchPage() {
                       title={data.anime.title}
                       subtitle={`EP ${data.number}`}
                       startTime={startTime}
-                      malId={data.anime.mal_id}
+                      malId={data.anime.mal_id || data.anime.slug}
                       episodeNumber={data.number}
                       onTimeUpdate={(time) => updateHistory(data.anime.id, episodeId, data.number.toString(), time)}
                       onVideoEnd={() => navigate('next')}
@@ -283,7 +375,7 @@ export default function WatchPage() {
                       title={data.anime.title}
                       subtitle={`EP ${data.number}`}
                       startTime={startTime}
-                      malId={data.anime.mal_id}
+                      malId={data.anime.mal_id || data.anime.slug}
                       episodeNumber={data.number}
                       onTimeUpdate={(time) => updateHistory(data.anime.id, episodeId, data.number.toString(), time)}
                       onVideoEnd={() => navigate('next')}
@@ -328,9 +420,20 @@ export default function WatchPage() {
                   </div>
                 </div>
               )}
+
+              {!theaterMode && (
+                <div className="flex items-start gap-3 mt-3 px-4 py-3 rounded-2xl bg-[#B026FF]/5 border border-[#B026FF]/20 text-right">
+                  <div className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-[#B026FF]/20 flex items-center justify-center">
+                    <span className="text-[#B026FF] text-[10px] font-black">!</span>
+                  </div>
+                  <p className="text-[11px] text-white/50 leading-relaxed font-bold">
+                    <span className="text-[#B026FF] font-black">ملاحظة مجتمعية:</span> زرار <span className="text-white/80">"تخطي الانترو"</span> يُساعد الجميع — اضغطه فقط عند بداية الانترو، ولا تضغطه في أي وقت آخر حتى يعمل النظام بدقة لك وللمشاهدين القادمين. 🎯
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className={`${theaterMode ? 'hidden' : 'lg:col-span-1 xl:col-span-1'} flex flex-col gap-6 mx-4 sm:mx-0 min-w-0 w-full max-w-full`}>
+            <div className={`${theaterMode ? 'hidden' : 'lg:col-span-1 xl:col-span-1'} flex flex-col gap-6 px-4 sm:px-0 min-w-0 w-full max-w-full`}>
               <div className="p-6 rounded-[2.5rem] glass-card border border-white/10 flex flex-col items-center gap-6 relative overflow-hidden group min-w-0 w-full">
                 <div className="absolute -right-20 -top-20 w-48 h-48 bg-[#00F0FF]/10 blur-[60px] rounded-full group-hover:bg-[#B026FF]/10 transition-all duration-700" />
                 <div className="relative w-40 h-56 rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl bg-black/40 flex items-center justify-center shrink-0">

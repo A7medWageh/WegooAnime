@@ -204,3 +204,23 @@ model Log {
   stack     String?  @db.Text
   timestamp DateTime @default(now())
 }
+
+// ============================================
+// Crowdsourced Skip Times
+// ============================================
+
+model SkipTimeReport {
+  id          String   @id @default(cuid())
+  malId       Int
+  episode     Float
+  type        String   // "op" or "ed"
+  startTime   Int      // Rounded to nearest 5 seconds for bucketing
+  endTime     Int
+  occurrences Int      @default(1) // Number of users confirming this exact interval
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([malId, episode, type, startTime, endTime])
+  @@map("skip_time_reports")
+}

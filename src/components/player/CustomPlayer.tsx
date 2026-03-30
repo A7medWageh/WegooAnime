@@ -459,6 +459,15 @@ const skipTimesCache: Record<string, any> = {};
                                         onMouseUp={() => setHoverTime(null)}
                                         onTouchEnd={() => setHoverTime(null)}
                                         onTouchCancel={() => setHoverTime(null)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            let p = (e.clientX - rect.left) / rect.width;
+                                            p = Math.max(0, Math.min(1, p));
+                                            if(videoRef.current) {
+                                                videoRef.current.currentTime = p * duration;
+                                            }
+                                        }}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 pointer-events-auto" 
                                     />
                                 </div>
@@ -476,8 +485,21 @@ const skipTimesCache: Record<string, any> = {};
                                 
                                 <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 10; }} className="text-white/80 hover:text-white transition-transform hover:scale-110 drop-shadow-lg"><RotateCw className="w-5 h-5 sm:w-6 sm:h-6" /></button>
                                 
-                                <button onClick={() => { if (videoRef.current) videoRef.current.currentTime += 85; }} className="flex items-center gap-1.5 px-3 py-1.5 ml-2 sm:ml-4 rounded-full bg-white/10 hover:bg-white/20 hover:text-[#00F0FF] border border-white/10 text-white font-bold text-xs hover:scale-105 transition-all outline-none drop-shadow-lg">
-                                    <FastForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">تخطي</span> +85ث
+                                <button onClick={() => { 
+                                    if (videoRef.current) {
+                                        const cTime = videoRef.current.currentTime;
+                                        videoRef.current.currentTime += 85;
+                                        if (cTime < 300 && episodeNumber && malId) {
+                                            const reportId = String(malId);
+                                            fetch('/api/skip/report', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ malId: reportId, episode: episodeNumber, type: 'op', startTime: Math.floor(cTime), endTime: Math.floor(cTime + 85) })
+                                            }).then(r => r.json()).then(d => console.log('[Skip Report]', d)).catch(console.error);
+                                        }
+                                    }
+                                }} className="flex items-center gap-1.5 px-3 py-1.5 ml-2 sm:ml-4 rounded-full bg-white/10 hover:bg-white/20 hover:text-[#00F0FF] border border-white/10 text-white font-bold text-xs hover:scale-105 transition-all outline-none drop-shadow-lg">
+                                    <FastForward className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> تخطي الانترو
                                 </button>
                                 
                                 <div className="hidden sm:flex items-center gap-3 group/volume ml-2">
