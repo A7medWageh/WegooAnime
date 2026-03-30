@@ -509,7 +509,7 @@ export function CustomPlayer({
             <video
                 ref={videoRef}
                 poster={poster}
-                className="w-full h-full object-contain cursor-pointer transition-all duration-300"
+                className="w-full h-full object-contain transition-all duration-300"
                 onTimeUpdate={handleTimeUpdateEvent}
                 onLoadedMetadata={(e) => {
                     handleLoadedMetadata();
@@ -530,6 +530,7 @@ export function CustomPlayer({
                 playsInline={true}
                 controls={false}
                 autoPlay={autoPlay}
+                onContextMenu={(e) => e.preventDefault()}
             />
 
             {/* Hardware Accelerated Brightness Overlay */}
@@ -662,7 +663,16 @@ export function CustomPlayer({
                                 <button onClick={async () => { try { if (videoRef.current !== document.pictureInPictureElement) await videoRef.current?.requestPictureInPicture(); else await document.exitPictureInPicture(); } catch {} }} className="hidden sm:block text-white hover:text-[#00F0FF] transition-all hover:scale-110 drop-shadow-lg p-2"><Monitor className="w-5 h-5 sm:w-6 sm:h-6" /></button>
                                 
                                 <button 
-                                    onPointerDown={(e) => { e.stopPropagation(); toggleFullscreen(); }} 
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        const v = videoRef.current as any;
+                                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                                        if (isIOS && v && v.webkitEnterFullscreen) {
+                                            v.webkitEnterFullscreen();
+                                        } else {
+                                            toggleFullscreen();
+                                        }
+                                    }} 
                                     className="text-white hover:text-[#00F0FF] transition-all hover:scale-110 drop-shadow-lg p-2 active:scale-95 flex items-center justify-center pointer-events-auto"
                                 >
                                     {isFullscreen ? <Minimize className="w-5 h-5 sm:w-6 sm:h-6" /> : <Maximize className="w-5 h-5 sm:w-6 sm:h-6" />}

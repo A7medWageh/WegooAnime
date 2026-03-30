@@ -621,7 +621,7 @@ export function MobilePlayer({
             <video
                 ref={videoRef}
                 poster={poster}
-                className="w-full h-full object-contain transition-all duration-300 pointer-events-none"
+                className="w-full h-full object-contain transition-all duration-300"
                 onTimeUpdate={handleTimeUpdateEvent}
                 onLoadedMetadata={(e) => {
                     handleLoadedMetadata();
@@ -806,8 +806,17 @@ export function MobilePlayer({
                                 </div>
 
                                 <button 
-                                    onPointerDown={(e) => { e.stopPropagation(); toggleFullscreen(); }} 
-                                    className="text-white hover:text-[#00F0FF] transition-all drop-shadow-lg p-2 active:scale-95 flex items-center justify-center pointer-events-auto"
+                                    onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        const v = videoRef.current as any;
+                                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                                        if (isIOS && v && v.webkitEnterFullscreen) {
+                                            v.webkitEnterFullscreen();
+                                        } else {
+                                            toggleFullscreen();
+                                        }
+                                    }} 
+                                    className="text-white hover:text-[#00F0FF] transition-all p-2 active:scale-90 flex items-center justify-center pointer-events-auto"
                                 >
                                     {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
                                 </button>
