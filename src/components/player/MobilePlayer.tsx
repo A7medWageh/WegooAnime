@@ -65,6 +65,7 @@ export function MobilePlayer({
     const [showSettings, setShowSettings] = useState(false);
     const [qualities, setQualities] = useState<{ id: number, label: string }[]>([]);
     const [currentQuality, setCurrentQuality] = useState<number>(-1);
+    const [isThumbnailInit, setIsThumbnailInit] = useState(false);
 
     const [hasSkippedIntro, setHasSkippedIntro] = useState(false);
     const [skipTimes, setSkipTimes] = useState<{ op?: { start: number, end: number }, ed?: { start: number, end: number } }>({});
@@ -105,7 +106,15 @@ export function MobilePlayer({
         const isIOS = checkIsIOS();
 
         if (isM3u8 && Hls.isSupported() && !isIOS) {
-            hls = new Hls();
+            hls = new Hls({
+                enableWorker: true,
+                maxBufferLength: 10,
+                maxMaxBufferLength: 20,
+                maxBufferSize: 30 * 1000 * 1000, // 30MB
+                startLevel: 0,
+                backBufferLength: 0,
+                lowLatencyMode: true,
+            });
             hls.loadSource(videoUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -114,35 +123,48 @@ export function MobilePlayer({
                 })).sort((a, b) => b.id - a.id);
                 setQualities(availableQualities);
                 if (autoPlay) video.play().catch(() => setIsPlaying(false));
+                setIsWaiting(false); // Rocket speed: manifest is ready
             });
             hlsRef.current = hls;
-
-            if (previewVideo) {
-                previewHls = new Hls({ 
-                    autoStartLoad: false,
-                    startLevel: 0,
-                    capLevelToPlayerSize: true
-                });
-                previewHls.loadSource(videoUrl);
-                previewHls.attachMedia(previewVideo);
-                previewHlsRef.current = previewHls;
-            }
         } else {
             video.src = videoUrl;
             video.load();
             if (autoPlay) video.play().catch(() => setIsPlaying(false));
-            
-            if (previewVideo) {
-                previewVideo.src = videoUrl;
-                previewVideo.load();
-            }
         }
 
         return () => {
             if (hls) hls.destroy();
-            if (previewHls) previewHls.destroy();
+            if (previewHlsRef.current) {
+                previewHlsRef.current.destroy();
+                previewHlsRef.current = null;
+            }
         };
     }, [videoUrl, autoPlay]);
+
+    const initThumbnailPreview = useCallback(() => {
+        if (isThumbnailInit || !videoUrl) return;
+        const previewVideo = previewVideoRef.current;
+        if (!previewVideo) return;
+
+        const isM3u8 = videoUrl.toLowerCase().includes('.m3u8');
+        const isIOS = checkIsIOS();
+
+        if (isM3u8 && Hls.isSupported() && !isIOS) {
+            const ph = new Hls({ 
+                autoStartLoad: false,
+                startLevel: 0,
+                capLevelToPlayerSize: true,
+                enableWorker: true
+            });
+            ph.loadSource(videoUrl);
+            ph.attachMedia(previewVideo);
+            previewHlsRef.current = ph;
+        } else {
+            previewVideo.src = videoUrl;
+            previewVideo.load();
+        }
+        setIsThumbnailInit(true);
+    }, [isThumbnailInit, videoUrl]);
 
     // Unified Skip Times Integration (AniSkip + Anime-Skip Fallback)
     useEffect(() => {
@@ -247,6 +269,8 @@ export function MobilePlayer({
         const time = percent * duration;
         setScrubTime(time);
 
+        if (!isThumbnailInit) initThumbnailPreview();
+
         if (previewVideoRef.current) {
             // Prime the video on first touch for mobile
             if (previewVideoRef.current.paused && previewVideoRef.current.readyState === 0) {
@@ -284,6 +308,8 @@ export function MobilePlayer({
         setHoverTime(time);
         setHoverPos(percent * 100);
 
+        if (!isThumbnailInit) initThumbnailPreview();
+
         if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 0.5) {
             setIsThumbnailReady(false);
             if (previewHlsRef.current) {
@@ -294,7 +320,26 @@ export function MobilePlayer({
                 if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
             }, 50);
         }
-    }, []);
+    }, [isThumbnailInit, initThumbnailPreview]);
+
+    const handleSeekInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = parseFloat(e.target.value);
+        if (!isThumbnailInit) initThumbnailPreview();
+        handleSeek(e);
+        const time = (value / 100) * duration;
+        setScrubTime(time);
+        
+        if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 0.5) {
+            setIsThumbnailReady(false);
+            if (previewHlsRef.current) {
+                previewHlsRef.current.startLoad();
+            }
+            if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
+            seekTimeoutRef.current = setTimeout(() => {
+                if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
+            }, 50);
+        }
+    }, [isThumbnailInit, initThumbnailPreview, handleSeek, duration]);
 
     const handleTimelineMouseLeave = useCallback(() => {
         setHoverTime(null);

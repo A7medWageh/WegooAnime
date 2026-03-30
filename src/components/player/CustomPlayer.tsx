@@ -79,7 +79,8 @@ export function CustomPlayer({
     const [hoverTime, setHoverTime] = useState<number | null>(null);
     const [hoverPercent, setHoverPercent] = useState<number>(0);
     const [isThumbnailReady, setIsThumbnailReady] = useState(false);
-
+    const [isThumbnailInit, setIsThumbnailInit] = useState(false);
+    
     // HLS Integration
     useEffect(() => {
         const video = videoRef.current;
@@ -93,7 +94,15 @@ export function CustomPlayer({
         const isIOS = checkIsIOS();
 
         if (isM3u8 && Hls.isSupported() && !isIOS) {
-            hls = new Hls();
+            hls = new Hls({
+                enableWorker: true,
+                maxBufferLength: 10,
+                maxMaxBufferLength: 20,
+                maxBufferSize: 30 * 1000 * 1000,
+                startLevel: 0,
+                backBufferLength: 0,
+                lowLatencyMode: true
+            });
             hls.loadSource(videoUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -102,36 +111,48 @@ export function CustomPlayer({
                 })).sort((a, b) => b.id - a.id);
                 setQualities(availableQualities);
                 if (autoPlay) video.play().catch(() => setIsPlaying(false));
+                setIsWaiting(false);
             });
             hlsRef.current = hls;
-
-            // Thumbnail Preview HLS
-            if (previewVideo) {
-                previewHls = new Hls({ 
-                    autoStartLoad: false,
-                    startLevel: 0,
-                    capLevelToPlayerSize: true
-                });
-                previewHls.loadSource(videoUrl);
-                previewHls.attachMedia(previewVideo);
-                previewHlsRef.current = previewHls;
-            }
         } else {
             video.src = videoUrl;
             video.load();
             if (autoPlay) video.play().catch(() => setIsPlaying(false));
-            
-            if (previewVideo) {
-                previewVideo.src = videoUrl;
-                previewVideo.load();
-            }
         }
 
         return () => {
             if (hls) hls.destroy();
-            if (previewHls) previewHls.destroy();
+            if (previewHlsRef.current) {
+                previewHlsRef.current.destroy();
+                previewHlsRef.current = null;
+            }
         };
     }, [videoUrl, autoPlay]);
+
+    const initThumbnailPreview = useCallback(() => {
+        if (isThumbnailInit || !videoUrl) return;
+        const previewVideo = previewVideoRef.current;
+        if (!previewVideo) return;
+
+        const isM3u8 = videoUrl.toLowerCase().includes('.m3u8');
+        const isIOS = checkIsIOS();
+
+        if (isM3u8 && Hls.isSupported() && !isIOS) {
+            const ph = new Hls({ 
+                autoStartLoad: false,
+                startLevel: 0,
+                capLevelToPlayerSize: true,
+                enableWorker: true
+            });
+            ph.loadSource(videoUrl);
+            ph.attachMedia(previewVideo);
+            previewHlsRef.current = ph;
+        } else {
+            previewVideo.src = videoUrl;
+            previewVideo.load();
+        }
+        setIsThumbnailInit(true);
+    }, [isThumbnailInit, videoUrl]);
 
     // Unified Skip Times Integration (AniSkip + Anime-Skip Fallback)
     useEffect(() => {
@@ -185,6 +206,8 @@ export function CustomPlayer({
         const time = percent * duration;
         setHoverTime(time);
         
+        if (!isThumbnailInit) initThumbnailPreview();
+
         if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 0.5) {
             setIsThumbnailReady(false);
             if (previewHlsRef.current) {
@@ -195,7 +218,7 @@ export function CustomPlayer({
                 if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
             }, 50);
         }
-    }, [duration]);
+    }, [duration, isThumbnailInit, initThumbnailPreview]);
 
     const handleTimelineTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -206,6 +229,8 @@ export function CustomPlayer({
         const time = percent * duration;
         setHoverTime(time);
         
+        if (!isThumbnailInit) initThumbnailPreview();
+
         if (previewVideoRef.current) {
             // Prime the video on first touch for mobile
             if (previewVideoRef.current.paused && previewVideoRef.current.readyState === 0) {
@@ -223,7 +248,7 @@ export function CustomPlayer({
                 }, 50);
             }
         }
-    }, [duration]);
+    }, [duration, isThumbnailInit, initThumbnailPreview]);
 
     const handlePreviewSeeked = () => {
         if (!previewVideoRef.current || !canvasRef.current) return;
