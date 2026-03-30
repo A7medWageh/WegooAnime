@@ -223,24 +223,40 @@ export class UnifiedAnimeService {
     public async getAiring(limit = 15): Promise<UnifiedAnime[]> {
         try {
             const airing = await getAiringNow();
-            const unified = await Promise.all(airing.slice(0, limit).map(a => this.mapJikan(a, false))); // Enable translation for airing (Hero items usually)
+            if (!airing || airing.length === 0) throw new Error('Jikan returned empty');
+            
+            const unified = await Promise.all(airing.slice(0, limit).map(a => this.mapJikan(a, false)));
             unified.forEach(a => {
                 this.cacheAnime(a).catch(e => console.error(`[UnifiedService] Airing Cache failed for ${a.slug}:`, e));
             });
             return unified;
         } catch (err) {
+            console.warn('[UnifiedService] getAiring source (Jikan) failing, falling back to DB/Scraper');
+            
+            // 1. Try DB Fallback (Ongoing status)
             const dbAnime = await prisma.anime.findMany({
                 where: { status: 'ONGOING' },
                 take: limit,
                 orderBy: { updatedAt: 'desc' }
             });
-            return dbAnime.map(a => ({
-                id: a.slug, mal_id: a.malId, title: a.title,
-                title_en: a.titleEnglish || undefined,
-                title_jp: a.titleJapanese || undefined, slug: a.slug, image: a.coverImage || null,
-                synopsis: a.synopsis, type: String(a.type), status: String(a.status),
-                rating: a.rating, episodes: a.totalEpisodes, genres: [], year: a.year, source: 'database'
-            }));
+            
+            if (dbAnime.length > 0) {
+                return dbAnime.map(a => ({
+                    id: a.slug, mal_id: a.malId, title: a.title,
+                    title_en: a.titleEnglish || undefined,
+                    title_jp: a.titleJapanese || undefined, slug: a.slug, image: a.coverImage || null,
+                    synopsis: a.synopsis, type: String(a.type), status: String(a.status),
+                    rating: a.rating, episodes: a.totalEpisodes, genres: [], year: a.year, source: 'database'
+                }));
+            }
+
+            // 2. Critical Fallback: Try Scraper (anicli) latest list to fill the void
+            try {
+                const latest = await getLatestAnime(0, limit);
+                return Promise.all(latest.map(a => this.mapAni(a, true)));
+            } catch {
+                return [];
+            }
         }
     }
 }

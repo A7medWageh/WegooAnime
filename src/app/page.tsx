@@ -38,7 +38,10 @@ async function getData() {
 export default async function Home() {
   const { latest, topRated, trending, airingNow } = await getData();
 
-  const heroItems = airingNow.length ? airingNow : trending;
+  // Smart Hero selection: Prioritize Airing, fallback to a mix of Trending and Top Rated for diversity
+  const heroItems = airingNow.length > 0 
+    ? airingNow 
+    : [...trending.slice(0, 10), ...topRated.slice(0, 5)].sort(() => Math.random() - 0.5);
 
   return (
     <div className="bg-[#050505] min-h-screen text-white font-sans selection:bg-[#00F0FF]/30 selection:text-white">
