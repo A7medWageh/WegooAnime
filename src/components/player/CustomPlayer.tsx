@@ -109,13 +109,11 @@ export function CustomPlayer({
             if (previewVideo) {
                 previewHls = new Hls({ 
                     autoStartLoad: false,
-                    startLevel: 0
+                    startLevel: 0,
+                    capLevelToPlayerSize: true
                 });
                 previewHls.loadSource(videoUrl);
                 previewHls.attachMedia(previewVideo);
-                previewHls.on(Hls.Events.MANIFEST_PARSED, () => {
-                     if (previewHls) previewHls.currentLevel = 0;
-                });
                 previewHlsRef.current = previewHls;
             }
         } else {
@@ -125,6 +123,7 @@ export function CustomPlayer({
             
             if (previewVideo) {
                 previewVideo.src = videoUrl;
+                previewVideo.load();
             }
         }
 
@@ -207,15 +206,22 @@ export function CustomPlayer({
         const time = percent * duration;
         setHoverTime(time);
         
-        if (previewVideoRef.current && Math.abs(previewVideoRef.current.currentTime - time) > 0.5) {
-            setIsThumbnailReady(false);
-            if (previewHlsRef.current) {
-                previewHlsRef.current.startLoad();
+        if (previewVideoRef.current) {
+            // Prime the video on first touch for mobile
+            if (previewVideoRef.current.paused && previewVideoRef.current.readyState === 0) {
+                 previewVideoRef.current.play().then(() => previewVideoRef.current?.pause()).catch(() => {});
             }
-            if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
-            seekTimeoutRef.current = setTimeout(() => {
-                if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
-            }, 50);
+
+            if (Math.abs(previewVideoRef.current.currentTime - time) > 0.5) {
+                setIsThumbnailReady(false);
+                if (previewHlsRef.current) {
+                    previewHlsRef.current.startLoad();
+                }
+                if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
+                seekTimeoutRef.current = setTimeout(() => {
+                    if (previewVideoRef.current) previewVideoRef.current.currentTime = time;
+                }, 50);
+            }
         }
     }, [duration]);
 
@@ -370,7 +376,15 @@ export function CustomPlayer({
             }}
             onDoubleClick={() => toggleFullscreen()}
         >
-            <video ref={previewVideoRef} className="hidden" muted playsInline crossOrigin="anonymous" onSeeked={handlePreviewSeeked} />
+            <video
+                ref={previewVideoRef}
+                className="opacity-0 absolute pointer-events-none w-[320px] h-[180px] top-[-1000px] left-[-1000px]"
+                crossOrigin="anonymous"
+                playsInline
+                preload="auto"
+                muted
+                onSeeked={handlePreviewSeeked}
+            />
 
             <AnimatePresence>
                 {!isPlaying && !isWaiting && !showSettings && (
