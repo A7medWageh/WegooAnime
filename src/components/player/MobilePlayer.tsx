@@ -36,7 +36,9 @@ const formatTime = (time: number) => {
 
 const checkIsIOS = () => {
     if (typeof window === 'undefined') return false;
-    return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const ua = navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    return isIOS;
 };
 
 export function MobilePlayer({
@@ -110,7 +112,7 @@ export function MobilePlayer({
                 enableWorker: true,
                 maxBufferLength: 5,
                 maxMaxBufferLength: 10,
-                maxBufferSize: 5 * 1024 * 1024, // 5MB for bullet start
+                maxBufferSize: 5 * 1024 * 1024,
                 startLevel: 0,
                 backBufferLength: 0,
                 lowLatencyMode: true,
@@ -129,9 +131,17 @@ export function MobilePlayer({
             });
             hlsRef.current = hls;
         } else {
+            // Force native HLS on iOS or fallback
             video.src = videoUrl;
             video.load();
-            if (autoPlay) video.play().catch(() => setIsPlaying(false));
+            if (autoPlay) {
+                video.play().then(() => {
+                    setIsPlaying(true);
+                    setIsWaiting(false);
+                }).catch(() => {
+                    setIsPlaying(false);
+                });
+            }
         }
 
         // Native iOS Fullscreen listeners
@@ -573,15 +583,26 @@ export function MobilePlayer({
                 poster={poster}
                 className="w-full h-full object-contain transition-all duration-300 pointer-events-none"
                 onTimeUpdate={handleTimeUpdateEvent}
-                onLoadedMetadata={handleLoadedMetadata}
+                onLoadedMetadata={(e) => {
+                    handleLoadedMetadata();
+                    setIsWaiting(false);
+                }}
+                onCanPlay={() => setIsWaiting(false)}
                 onEnded={onVideoEnd}
                 onWaiting={() => setIsWaiting(true)}
                 onPlaying={() => setIsWaiting(false)}
-                onPause={() => setIsPlaying(false)}
-                onPlay={() => { setIsPlaying(true); setIsWaiting(false); }}
-                playsInline
+                onPause={() => {
+                    setIsPlaying(false);
+                    setIsWaiting(false); // Clear spinner on pause
+                }}
+                onPlay={() => { 
+                    setIsPlaying(true); 
+                    setIsWaiting(false); 
+                }}
+                playsInline={true}
                 webkit-playsinline="true"
                 controls={false}
+                autoPlay={autoPlay}
             />
 
             <video
