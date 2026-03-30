@@ -498,7 +498,6 @@ export function MobilePlayer({
                 ref={videoRef}
                 poster={poster}
                 className="w-full h-full object-contain transition-all duration-300 pointer-events-none"
-                crossOrigin="anonymous"
                 onTimeUpdate={handleTimeUpdateEvent}
                 onLoadedMetadata={handleLoadedMetadata}
                 onEnded={onVideoEnd}
@@ -514,7 +513,6 @@ export function MobilePlayer({
             <video
                 ref={previewVideoRef}
                 className="opacity-0 absolute pointer-events-none w-[320px] h-[180px] top-[-1000px] left-[-1000px]"
-                crossOrigin="anonymous"
                 playsInline
                 preload="auto"
                 muted

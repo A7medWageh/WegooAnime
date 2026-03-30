@@ -379,7 +379,6 @@ export function CustomPlayer({
             <video
                 ref={previewVideoRef}
                 className="opacity-0 absolute pointer-events-none w-[320px] h-[180px] top-[-1000px] left-[-1000px]"
-                crossOrigin="anonymous"
                 playsInline
                 preload="auto"
                 muted
@@ -417,7 +416,6 @@ export function CustomPlayer({
                 ref={videoRef}
                 poster={poster}
                 className="w-full h-full object-contain cursor-pointer transition-all duration-300"
-                crossOrigin="anonymous"
                 onTimeUpdate={handleTimeUpdateEvent}
                 onLoadedMetadata={handleLoadedMetadata}
                 onEnded={onVideoEnd}
