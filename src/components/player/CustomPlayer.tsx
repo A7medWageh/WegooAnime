@@ -486,7 +486,6 @@ export function CustomPlayer({
                     setIsWaiting(false); 
                 }}
                 playsInline={true}
-                webkit-playsinline="true"
                 controls={false}
                 autoPlay={autoPlay}
             />
@@ -622,7 +621,8 @@ export function CustomPlayer({
                                 
                                 <button 
                                     onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} 
-                                    className="text-white hover:text-[#00F0FF] transition-all hover:scale-110 drop-shadow-lg p-2 active:scale-95 flex items-center justify-center"
+                                    onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); toggleFullscreen(); }}
+                                    className="text-white hover:text-[#00F0FF] transition-all hover:scale-110 drop-shadow-lg p-2 active:scale-95 flex items-center justify-center pointer-events-auto"
                                 >
                                     {isFullscreen ? <Minimize className="w-5 h-5 sm:w-6 sm:h-6" /> : <Maximize className="w-5 h-5 sm:w-6 sm:h-6" />}
                                 </button>
