@@ -96,12 +96,14 @@ export function CustomPlayer({
         if (isM3u8 && Hls.isSupported() && !isIOS) {
             hls = new Hls({
                 enableWorker: true,
-                maxBufferLength: 10,
-                maxMaxBufferLength: 20,
-                maxBufferSize: 30 * 1000 * 1000,
+                maxBufferLength: 5,
+                maxMaxBufferLength: 10,
+                maxBufferSize: 10 * 1024 * 1024, // 10MB for bullet start (Desktop)
                 startLevel: 0,
                 backBufferLength: 0,
-                lowLatencyMode: true
+                lowLatencyMode: true,
+                nudgeOffset: 0.1,
+                nudgeMaxRetry: 10
             });
             hls.loadSource(videoUrl);
             hls.attachMedia(video);
@@ -120,12 +122,21 @@ export function CustomPlayer({
             if (autoPlay) video.play().catch(() => setIsPlaying(false));
         }
 
+        // Native iOS Fullscreen listeners
+        const handleIOSFullscreenBegin = () => setIsFullscreen(true);
+        const handleIOSFullscreenEnd = () => setIsFullscreen(false);
+
+        video.addEventListener('webkitbeginfullscreen', handleIOSFullscreenBegin);
+        video.addEventListener('webkitendfullscreen', handleIOSFullscreenEnd);
+
         return () => {
             if (hls) hls.destroy();
             if (previewHlsRef.current) {
                 previewHlsRef.current.destroy();
                 previewHlsRef.current = null;
             }
+            video.removeEventListener('webkitbeginfullscreen', handleIOSFullscreenBegin);
+            video.removeEventListener('webkitendfullscreen', handleIOSFullscreenEnd);
         };
     }, [videoUrl, autoPlay]);
 
@@ -362,13 +373,22 @@ export function CustomPlayer({
             return;
         }
 
-        const isIOS = checkIsIOS();
-        if (isIOS) {
+        const video = videoRef.current as any;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (isIOS && video && video.webkitEnterFullscreen) {
             setIsFullscreen(true);
-        } else if (elem.requestFullscreen) {
-            elem.requestFullscreen().catch(() => setIsFullscreen(true));
-        } else if (elem.webkitRequestFullscreen) {
-            elem.webkitRequestFullscreen();
+            video.webkitEnterFullscreen();
+            return;
+        }
+
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().then(() => {
+                setIsFullscreen(true);
+            }).catch(() => setIsFullscreen(true));
+        } else if ((elem as any).webkitRequestFullscreen) {
+            (elem as any).webkitRequestFullscreen();
+            setIsFullscreen(true);
         } else {
             setIsFullscreen(true);
         }
