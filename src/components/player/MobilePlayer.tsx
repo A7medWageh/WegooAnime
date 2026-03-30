@@ -144,11 +144,10 @@ export function MobilePlayer({
             }
         }
 
-        // Native iOS Fullscreen listeners
-        const handleIOSFullscreenBegin = () => { setIsFullscreen(true); setShowControls(false); };
+        // Pure native breakout for iOS - we don't sync isFullscreen state
+        // to avoid layout shifts in the background page.
         const handleIOSFullscreenEnd = () => setIsFullscreen(false);
 
-        video.addEventListener('webkitbeginfullscreen', handleIOSFullscreenBegin);
         video.addEventListener('webkitendfullscreen', handleIOSFullscreenEnd);
 
         return () => {
@@ -157,7 +156,6 @@ export function MobilePlayer({
                 previewHlsRef.current.destroy();
                 previewHlsRef.current = null;
             }
-            video.removeEventListener('webkitbeginfullscreen', handleIOSFullscreenBegin);
             video.removeEventListener('webkitendfullscreen', handleIOSFullscreenEnd);
         };
     }, [videoUrl, autoPlay]);
@@ -425,7 +423,6 @@ export function MobilePlayer({
         
         if (isIOS && video.webkitEnterFullscreen) {
             video.webkitEnterFullscreen();
-            setIsFullscreen(true);
             return;
         }
 
