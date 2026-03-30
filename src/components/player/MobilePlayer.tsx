@@ -482,7 +482,8 @@ export function MobilePlayer({
             (elem as any).webkitRequestFullscreen();
             setIsFullscreen(true);
         } else {
-            setIsFullscreen(true);
+            // Simulated Fullscreen (Last resort, avoid on iPhone)
+            if (!isIOS) setIsFullscreen(true);
         }
     };
 
