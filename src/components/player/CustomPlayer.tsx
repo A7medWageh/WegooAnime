@@ -90,11 +90,7 @@ export function CustomPlayer({
         const isIOS = checkIsIOS();
 
         if (isM3u8 && Hls.isSupported() && !isIOS) {
-            hls = new Hls({
-                capLevelToPlayerSize: true,
-                maxBufferLength: 60,
-                maxMaxBufferLength: 600,
-            });
+            hls = new Hls();
             hls.loadSource(videoUrl);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -110,10 +106,7 @@ export function CustomPlayer({
             if (previewVideo) {
                 previewHls = new Hls({ 
                     autoStartLoad: false,
-                    startLevel: 0,
-                    capLevelToPlayerSize: true,
-                    maxBufferLength: 5,
-                    maxMaxBufferLength: 10
+                    startLevel: 0
                 });
                 previewHls.loadSource(videoUrl);
                 previewHls.attachMedia(previewVideo);
