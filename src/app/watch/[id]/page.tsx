@@ -56,9 +56,17 @@ export default function WatchPage() {
   const [videoError, setVideoError] = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);
   const [startTime, setStartTime] = useState(0);
-  const [showSkipNotice, setShowSkipNotice] = useState(true);
+  const [showSkipNotice, setShowSkipNotice] = useState(false);
 
-  const dismissSkipNotice = () => setShowSkipNotice(false);
+  useEffect(() => {
+    const hasSeen = localStorage.getItem('hasSeenSkipNotice');
+    if (!hasSeen) setShowSkipNotice(true);
+  }, []);
+
+  const dismissSkipNotice = () => {
+    setShowSkipNotice(false);
+    localStorage.setItem('hasSeenSkipNotice', 'true');
+  };
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
