@@ -157,9 +157,10 @@ export default function WatchPage() {
         else if (r.sources && r.sources.length>0) finalUrl = r.sources[0].url;
       }
       
-      // Now fetch the actual stream blob
-      const response = await fetch(finalUrl, { signal: controller.signal });
-      if (!response.ok) throw new Error('Download failed');
+      // Now fetch the actual stream blob through our internal proxy to bypass CORS
+      const proxyUrl = `/api/proxy-download?url=${encodeURIComponent(finalUrl)}&filename=${encodeURIComponent(`${data?.anime.title} - الحلقة ${data?.number} - ${qualityLabel}.mp4`)}`;
+      const response = await fetch(proxyUrl, { signal: controller.signal });
+      if (!response.ok) throw new Error('Download failed through proxy');
       const reader = response.body?.getReader();
       const contentLength = +(response.headers.get('Content-Length') || 0);
       let receivedLength = 0;
