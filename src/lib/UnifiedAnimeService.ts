@@ -262,7 +262,6 @@ export class UnifiedAnimeService {
     public async getFeaturedAnimes(): Promise<UnifiedAnime[]> {
         const featuredNames = [
             "Sousou no Frieren 2nd Season",
-            "Frieren: Beyond Journey's End Season 2",
             "Jujutsu Kaisen: The Culling Game Part 1",
             "Hell's Paradise Season 2",
             "Sentenced to Be a Hero",
