@@ -138,7 +138,7 @@ export function CosmicHero({ items }: { items: AnimeCard[] }) {
 
                         {/* Synopsis */}
                         <p className="text-gray-300 text-[11px] leading-relaxed mb-4 max-w-sm px-2 line-clamp-2" style={{ minHeight: '30px', maxHeight: '60px' }}>
-                            {curr.synopsis || 'انمي رائع مليء بالإثارة والمغامرات'}
+                            {curr.synopsis || `استعد لمغامرة ملحمية في عالم ${curr.title} حيث يواجه البطل تحديات خارقة للعادة، ويكتشف أسراراً كانت مخبأة في الظلام. انضم إلى رحلة مليئة بالإثارة والحركة، وقصص مؤثرة ستبقى في ذاكرتك طويلاً.`}
                         </p>
 
                         {/* Buttons */}
@@ -205,7 +205,7 @@ export function CosmicHero({ items }: { items: AnimeCard[] }) {
                                         {curr.title}
                                     </h1>
                                     <p className="text-gray-200 text-sm sm:text-base lg:text-lg xl:text-xl line-clamp-2 sm:line-clamp-3 leading-relaxed max-w-3xl font-medium drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] border-r-4 border-[#FF5500] pr-4 sm:pr-5 py-1 min-h-[50px] sm:min-h-[85px] max-h-[120px]">
-                                        {curr.synopsis || 'انمي ملحمي مليء بالإثارة والمغامرات الشيقة'}
+                                        {curr.synopsis || `انطلق في رحلة لا تُنسى مع ${curr.title}! قصة ملحمية تجمع بين الأكشن المشوق والدراما العميقة، حيث يواجه الأبطال مصيرهم المحتوم في عالم مليء بالغموض والأسئلة. كل حلقة تحمل مفاجآت جديدة وتطورات مثيرة تشدك وتجعلك تنتظر المزيد بفارغ الصبر.`}
                                     </p>
                                 </div>
 
