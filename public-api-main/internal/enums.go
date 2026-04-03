@@ -1,0 +1,33 @@
+package internal
+
+const (
+	ROLE_DEV      int64 = 0
+	ROLE_ADMIN    int64 = 1
+	ROLE_USER     int64 = 2
+	ROLE_REVIEWER int64 = 3
+)
+
+const (
+	THEME_PER_SERVICE        int64 = 0
+	THEME_ANIME_SKIP_BLUE    int64 = 1
+	THEME_VRV_YELLOW         int64 = 2
+	THEME_FUNIMATION_PURPLE  int64 = 3
+	THEME_CRUNCHYROLL_ORANGE int64 = 4
+)
+
+const (
+	EPISODE_SOURCE_UNKNOWN     int64 = 0
+	EPISODE_SOURCE_VRV         int64 = 1
+	EPISODE_SOURCE_FUNIMATION  int64 = 2
+	EPISODE_SOURCE_CRUNCHYROLL int64 = 3
+)
+
+const (
+	TIMESTAMP_SOURCE_ANIME_SKIP int64 = 0
+	TIMESTAMP_SOURCE_BETTER_VRV int64 = 1
+)
+
+const (
+	TEMPLATE_TYPE_SHOW    int64 = 0
+	TEMPLATE_TYPE_SEASONS int64 = 1
+)

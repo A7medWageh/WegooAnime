@@ -1,0 +1,70 @@
+name: Autonomous Self-Healing
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Every 30 minutes
+  workflow_dispatch: # Allows manual trigger
+
+permissions:
+  contents: read
+
+jobs:
+  monitor-and-heal:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        
+    steps:
+      - name: Check Health and Trigger Recovery
+        id: heal
+        env:
+          WEBSITE_URL: "${{ secrets.WEBSITE_URL }}"
+          SELF_HEAL_SECRET: "${{ secrets.SELF_HEAL_SECRET }}"
+          VERCEL_DEPLOY_HOOK_URL: "${{ secrets.VERCEL_DEPLOY_HOOK_URL }}"
+        run: |
+          # Use the environment variables instead of direct secret interpolation
+          if [ -z "$WEBSITE_URL" ]; then
+            echo "Error: WEBSITE_URL secret is not set. Please add it to your GitHub Secrets."
+            exit 1
+          fi
+          
+          echo "Checking health for $WEBSITE_URL..."
+          
+          # Use -sL to follow redirects and -w to check status code
+          RESPONSE=$(curl -sL -X GET "$WEBSITE_URL/api/admin/self-heal" \
+            -H "Authorization: Bearer $SELF_HEAL_SECRET")
+          
+          # Validate if response is JSON
+          if ! echo "$RESPONSE" | jq empty > /dev/null 2>&1; then
+            echo "Error: API did not return valid JSON. Response was: $RESPONSE"
+            exit 1
+          fi
+          
+          echo "Response: $RESPONSE"
+          
+          SUCCESS=$(echo $RESPONSE | jq -r '.success')
+          MESSAGE=$(echo $RESPONSE | jq -r '.message')
+          INITIAL_STATUS=$(echo $RESPONSE | jq -r '.initial_status // "healthy"')
+          
+          if [ "$SUCCESS" != "true" ]; then
+            echo "Critical Error: Self-heal API failed or returned error."
+            exit 1
+          fi
+          
+          if [ "$INITIAL_STATUS" != "healthy" ]; then
+            echo "Maintenance performed: $MESSAGE"
+            # If we applied a fix, we can optionally trigger a Vercel redeploy if the system is still not 100%
+            FINAL_STATUS=$(echo $RESPONSE | jq -r '.final_status')
+            if [ "$FINAL_STATUS" != "healthy" ] && [ ! -z "$VERCEL_DEPLOY_HOOK_URL" ]; then
+              echo "System still unhealthy. Triggering Vercel Redeploy..."
+              curl -s -X POST "$VERCEL_DEPLOY_HOOK_URL"
+            fi
+          else
+            echo "System is healthy. No action needed."
+          fi
+
+      - name: Alert on Failure
+        if: failure()
+        run: |
+          echo "Self-healing workflow failed! Check logs."
