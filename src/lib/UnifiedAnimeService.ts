@@ -74,7 +74,7 @@ export class UnifiedAnimeService {
      * Map AniAnime to UnifiedAnime
      */
     private async mapAni(a: AniAnime, skipTranslation = false): Promise<UnifiedAnime> {
-        const rawTitle = (a as any).AR_Title || a.title_en || a.title_jp || a.id;
+        const rawTitle = a.title_en || a.title;
         return {
             id: a.id,
             mal_id: a.mal_id !== '0' ? parseInt(a.mal_id) : null,
@@ -83,7 +83,7 @@ export class UnifiedAnimeService {
             title_jp: a.title_jp,
             slug: a.id,
             image: IMG(a.thumbnail),
-            synopsis: a.synopsis && a.synopsis.length > 5 ? (skipTranslation ? a.synopsis : await this.translateToArabic(a.synopsis)) : null,
+            synopsis: a.synopsis && a.synopsis.length > 10 ? (skipTranslation ? a.synopsis : await this.translateToArabic(a.synopsis)) : null,
             type: a.type === 'MOVIE' ? 'Movie' : 'TV',
             status: a.status?.toLowerCase().includes('finish') ? 'COMPLETED' : 'ONGOING',
             rating: a.score && a.score !== 'N/A' ? parseFloat(a.score) : null,
@@ -107,7 +107,7 @@ export class UnifiedAnimeService {
             title_jp: a.title_japanese,
             slug: a.mal_id.toString(),
             image: IMG(jikanCover(a)),
-            synopsis: a.synopsis && a.synopsis.length > 5 ? (skipTranslation ? a.synopsis : await this.translateToArabic(a.synopsis)) : null,
+            synopsis: a.synopsis && a.synopsis.length > 10 ? (skipTranslation ? a.synopsis : await this.translateToArabic(a.synopsis)) : null,
             type: a.type || 'TV',
             status: a.status || 'Ongoing',
             rating: a.score || null,
@@ -307,18 +307,18 @@ export class UnifiedAnimeService {
                         const hit = searchResults[0];
                         // If description is missing, too short, or just a lazy sequel placeholder, fetch authentic story from Jikan base season
                         const isBadSynopsis = !hit.synopsis || hit.synopsis.length < 30 || 
-                            (hit.synopsis.length < 150 && /season|sequel|موسم|تكملة|جزء/i.test(hit.synopsis));
+                            (hit.synopsis.length < 200 && /season|sequel|موسم|تكملة|جزء/i.test(hit.synopsis));
                             
                         if (isBadSynopsis) {
                             try {
                                 const baseQuery = name.replace(/Season \d+|Part \d+|2nd Season|3rd Season|Movie|The Movie/gi, '').replace(/[\[\]]/g, '').trim();
                                 const j = await searchJikan(baseQuery);
-                                // Find the most detailed synopsis from the first 3 Jikan results
-                                const bestResult = j?.slice(0, 3).reduce((prev, current) => 
+                                // Find most detailed synopsis from the first 5 Jikan results
+                                const bestResult = j?.slice(0, 5).reduce((prev, current) => 
                                     (prev.synopsis && current.synopsis && prev.synopsis.length > current.synopsis.length) ? prev : current
                                 );
                                 
-                                if (bestResult && bestResult.synopsis && bestResult.synopsis.length > 20) {
+                                if (bestResult && bestResult.synopsis && bestResult.synopsis.length > 50) {
                                     hit.synopsis = bestResult.synopsis;
                                 }
                             } catch(e) {}
