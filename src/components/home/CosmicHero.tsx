@@ -10,6 +10,7 @@ import { AnimeCard } from "./SpaceSection";
 export function CosmicHero({ items }: { items: AnimeCard[] }) {
     const [idx, setIdx] = useState(0);
     const [mounted, setMounted] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
     const heroItems = items.filter((a) => a.image).slice(0, 10);
 
     useEffect(() => {
@@ -17,19 +18,38 @@ export function CosmicHero({ items }: { items: AnimeCard[] }) {
     }, []);
 
     useEffect(() => {
-        if (!mounted || !heroItems.length) return;
+        if (!mounted || !heroItems.length || isPaused) return;
         const t = setInterval(
             () => setIdx((i) => (i + 1) % heroItems.length),
-            5000,
+            6000,
         );
         return () => clearInterval(t);
-    }, [heroItems.length, mounted]);
+    }, [heroItems.length, mounted, isPaused]);
+
+    // Auto-pause on hover
+    useEffect(() => {
+        const handleMouseEnter = () => setIsPaused(true);
+        const handleMouseLeave = () => setIsPaused(false);
+        
+        const heroElement = document.querySelector('[data-hero-container]');
+        if (heroElement) {
+            heroElement.addEventListener('mouseenter', handleMouseEnter);
+            heroElement.addEventListener('mouseleave', handleMouseLeave);
+        }
+        
+        return () => {
+            if (heroElement) {
+                heroElement.removeEventListener('mouseenter', handleMouseEnter);
+                heroElement.removeEventListener('mouseleave', handleMouseLeave);
+            }
+        };
+    }, []);
 
     if (!heroItems.length) return null;
     const curr = heroItems[idx];
 
     return (
-        <div className="relative w-full h-[100svh] sm:h-[95vh] overflow-hidden rounded-b-[2.5rem] sm:rounded-b-[4rem] bg-[#020202] shadow-[0_30px_100px_rgba(255,85,0,0.15)]">
+        <div data-hero-container className="relative w-full h-[100svh] sm:h-[95vh] overflow-hidden rounded-b-[2.5rem] sm:rounded-b-[4rem] bg-[#020202] shadow-[0_30px_100px_rgba(255,85,0,0.15)]">
 
             {/* ── Full Bleed Background (single live layer — was 10× full-viewport images) ── */}
             <div className="absolute inset-0 z-0">
@@ -71,7 +91,15 @@ export function CosmicHero({ items }: { items: AnimeCard[] }) {
                             transition={{ duration: 0.22, ease: "easeOut" }}
                             className="relative w-[210px] h-[300px] rounded-2xl overflow-hidden shadow-[0_15px_50px_rgba(0,0,0,0.95),0_0_40px_rgba(255,85,0,0.45)] border-2 border-white/15 shrink-0"
                         >
-                            <Image src={curr.image!} alt={curr.title} fill className="object-cover" priority />
+                            <Image 
+                                src={curr.image!} 
+                                alt={curr.title} 
+                                fill 
+                                className="object-cover" 
+                                priority={idx === 0}
+                                placeholder="blur"
+                                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                            />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                             <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-b from-[#FFD700]/40 via-[#FF5500]/20 to-transparent pointer-events-none" />
                             <div className="absolute inset-0 border border-white/10 rounded-2xl pointer-events-none" />
@@ -109,8 +137,8 @@ export function CosmicHero({ items }: { items: AnimeCard[] }) {
                         </h1>
 
                         {/* Synopsis */}
-                        <p className="text-gray-300 text-[11px] leading-relaxed mb-4 max-w-sm px-2 line-clamp-2" style={{ minHeight: '30px' }}>
-                            {curr.synopsis}
+                        <p className="text-gray-300 text-[11px] leading-relaxed mb-4 max-w-sm px-2 line-clamp-2" style={{ minHeight: '30px', maxHeight: '60px' }}>
+                            {curr.synopsis || 'انمي رائع مليء بالإثارة والمغامرات'}
                         </p>
 
                         {/* Buttons */}
@@ -176,8 +204,8 @@ export function CosmicHero({ items }: { items: AnimeCard[] }) {
                                     <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black mb-3 sm:mb-4 text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-gray-400 leading-[1.1] drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] line-clamp-2">
                                         {curr.title}
                                     </h1>
-                                    <p className="text-gray-200 text-sm sm:text-base lg:text-lg xl:text-xl line-clamp-2 sm:line-clamp-3 leading-relaxed max-w-3xl font-medium drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] border-r-4 border-[#FF5500] pr-4 sm:pr-5 py-1 min-h-[50px] sm:min-h-[85px]">
-                                        {curr.synopsis}
+                                    <p className="text-gray-200 text-sm sm:text-base lg:text-lg xl:text-xl line-clamp-2 sm:line-clamp-3 leading-relaxed max-w-3xl font-medium drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] border-r-4 border-[#FF5500] pr-4 sm:pr-5 py-1 min-h-[50px] sm:min-h-[85px] max-h-[120px]">
+                                        {curr.synopsis || 'انمي ملحمي مليء بالإثارة والمغامرات الشيقة'}
                                     </p>
                                 </div>
 
@@ -221,7 +249,15 @@ export function CosmicHero({ items }: { items: AnimeCard[] }) {
                                     className="relative w-[280px] h-[400px] xl:w-[350px] xl:h-[500px] rounded-3xl overflow-hidden shadow-[10px_15px_40px_rgba(0,0,0,0.8),0_0_50px_rgba(255,85,0,0.2)] border border-white/10 group/poster cursor-pointer hover:scale-105 transition-transform duration-300 bg-black mx-10 shrink-0"
                                 >
                                 <div className="absolute -inset-10 bg-gradient-to-tr from-[#FF5500] to-[#E52E71] rounded-3xl blur-3xl opacity-0 group-hover/poster:opacity-50 transition-opacity duration-700 -z-10" />
-                                <Image src={curr.image!} alt={curr.title} fill className="object-cover group-hover/poster:scale-105 transition-transform duration-700 ease-out" priority />
+                                <Image 
+                                    src={curr.image!} 
+                                    alt={curr.title} 
+                                    fill 
+                                    className="object-cover group-hover/poster:scale-105 transition-transform duration-700 ease-out" 
+                                    priority={idx === 0}
+                                    placeholder="blur"
+                                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+                                />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80" />
                                 <Link href={`/watch/${curr.slug}`} className="absolute inset-0 opacity-0 group-hover/poster:opacity-100 transition-opacity duration-500 flex flex-col items-center justify-center z-30">
                                     <div className="absolute inset-0 bg-[#FF5500]/20 backdrop-blur-sm" />
@@ -252,7 +288,7 @@ export function CosmicHero({ items }: { items: AnimeCard[] }) {
                             <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: "100%" }}
-                                transition={{ duration: 5, ease: "linear" }}
+                                transition={{ duration: 6, ease: "linear" }}
                                 className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#FFD700] via-[#FF5500] to-[#E52E71]"
                             />
                         )}
