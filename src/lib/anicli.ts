@@ -67,7 +67,15 @@ async function postApi(endpoint: string, body: Record<string, string>): Promise<
             throw new Error(`API error: ${res.status} ${endpoint}`);
         }
 
-        const data = await res.json();
+        const text = await res.text();
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error(`❌ [AniCli] Invalid JSON on ${endpoint}. Server returned Error HTML.`);
+            return { data: null, thumbBase };
+        }
+        
         return { data, thumbBase };
     } catch (err: any) {
         // Log error but rethrow to be caught by higher level resilience
@@ -236,9 +244,9 @@ export async function extractMediafire(serverId: string): Promise<string | null>
         ? serverId
         : `https://www.mediafire.com/file/${serverId}`;
     try {
-        // Add timeout for faster failure
+        // Add timeout for faster failure but ensure it's long enough for MediaFire's initial response
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 9000); // 9 second timeout
         
         const res = await fetch(url, {
             headers: { 

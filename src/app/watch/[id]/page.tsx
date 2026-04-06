@@ -89,7 +89,14 @@ export default function WatchPage() {
         const best = json.data.availableSources?.find((s: Source) => s.quality === '1080p')
           || json.data.availableSources?.find((s: Source) => s.quality === '720p')
           || json.data.availableSources?.[0] || null;
-        if (best) selectQuality(best);
+        
+        if (best) {
+           selectQuality(best);
+        } else {
+           setVideoError(true);
+           setError('نعتذر، سيرفرات المشاهدة لهذه الحلقة غير متوفرة حالياً.');
+           setResolving(false);
+        }
       } else { setError(json.error || 'فقد الاتصال بالمحطة'); }
     } catch { setError('تشويش في الإشارة'); }
     finally { setLoading(false); }
@@ -571,11 +578,11 @@ export default function WatchPage() {
                       <p className="text-xl font-black text-white mt-6 uppercase tracking-widest">{resolving ? 'جاري جلب الرابط...' : 'جاري التشغيل...'}</p>
                     </motion.div>
                   )}
-                  {videoError && (
+                  {videoError && !error && (
                     <motion.div className="absolute inset-0 z-20 bg-red-900/40 backdrop-blur-md flex flex-col items-center justify-center">
                       <AlertCircle className="w-16 h-16 text-red-500 mb-6" />
-                      <p className="text-xl font-black mb-6 uppercase">فشل جلب الرابط</p>
-                      <button onClick={() => fetchEpisode(episodeId)} className="px-8 py-3 bg-red-500 rounded-full font-bold">RETRY CONNECTION</button>
+                      <p className="text-xl font-black mb-6 uppercase">السيرفر لا يستجيب</p>
+                      <button onClick={() => fetchEpisode(episodeId)} className="px-8 py-3 bg-red-500 hover:bg-red-600 rounded-full font-bold shadow-lg transition-all">إعادة المحاولة</button>
                     </motion.div>
                   )}
                 </AnimatePresence>

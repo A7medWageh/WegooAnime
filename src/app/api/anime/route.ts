@@ -383,6 +383,12 @@ export async function GET(request: NextRequest) {
           }
         }
         animeId = slug || '';
+        
+        // If the ID is still purely numeric (a MAL ID that couldn't be mapped to AniCli slug)
+        // Set to a dummy ID to prevent passing numbers to AniCli backend which causes PHP crashes
+        if (!isNaN(Number(animeId))) {
+            animeId = 'UNAVAILABLE_SOURCE_ID';
+        }
 
         // Fetch episodes to find the first one
         const episodes = await getEpisodes(animeId).catch(() => []);

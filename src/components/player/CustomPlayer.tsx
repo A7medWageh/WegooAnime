@@ -492,23 +492,23 @@ export function CustomPlayer({
             {/* Watermark Overlay to cover WITanime logo - Seamless Soft Airbrush */}
             <div 
                 className="absolute top-0 left-0 z-[50] pointer-events-none flex items-center transition-all duration-300"
-                style={{ padding: '0.8cqw 1.2cqw', gap: '0.4cqw' }}
+                style={{ padding: '0.6cqw 1.2cqw', gap: '0.4cqw' }}
             >
-                {/* Seamless radial blur background */}
+                {/* Seamless radial blur background - Strengthened to hide logo */}
                 <div 
                     className="absolute top-0 left-0 -z-10 pointer-events-none"
                     style={{
-                        width: '18cqw',
-                        height: '6cqw',
-                        background: 'radial-gradient(ellipse at top left, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 70%)',
-                        backdropFilter: 'blur(8px)',
-                        WebkitBackdropFilter: 'blur(8px)',
-                        WebkitMaskImage: 'radial-gradient(ellipse at top left, black 30%, transparent 75%)',
-                        maskImage: 'radial-gradient(ellipse at top left, black 30%, transparent 75%)'
+                        width: '22cqw',
+                        height: '8cqw',
+                        background: 'radial-gradient(ellipse at top left, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 80%)',
+                        backdropFilter: 'blur(25px)',
+                        WebkitBackdropFilter: 'blur(25px)',
+                        WebkitMaskImage: 'radial-gradient(circle at top left, black 40%, transparent 90%)',
+                        maskImage: 'radial-gradient(circle at top left, black 40%, transparent 90%)'
                     }}
                 />
-                <span className="text-[#00F0FF] font-black tracking-wider" style={{ fontSize: '1.5cqw', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>WEGO</span>
-                <span className="text-white/95 font-bold" style={{ fontSize: '1.5cqw', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>ANIME</span>
+                <span className="text-[#00F0FF] font-black tracking-wider" style={{ fontSize: '1.6cqw', textShadow: '0 2px 10px rgba(0,0,0,1)' }}>WEGO</span>
+                <span className="text-white font-bold" style={{ fontSize: '1.6cqw', textShadow: '0 2px 10px rgba(0,0,0,1)' }}>ANIME.com</span>
             </div>
 
             <AnimatePresence>
