@@ -469,7 +469,7 @@ export function CustomPlayer({
             className={`relative bg-black flex items-center justify-center overflow-hidden w-full transition-all duration-300 group
         ${isFullscreen ? 'fixed !top-0 !left-0 !right-0 !bottom-0 !z-[2147483647] m-0 p-0 rounded-none w-screen h-[100dvh]' : 'rounded-[2rem] border border-white/10 shadow-2xl'}
         ${!showCursor && isPlaying ? 'cursor-none' : 'cursor-default'}`}
-            style={isFullscreen ? { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100dvh', zIndex: 2147483647 } : { aspectRatio: `${aspectRatio}` }}
+            style={isFullscreen ? { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100dvh', zIndex: 2147483647, containerType: 'inline-size' } : { aspectRatio: `${aspectRatio}`, containerType: 'inline-size' }}
             onMouseMove={handleMouseMove}
             onMouseLeave={() => { if (isPlaying) { setShowControls(false); setShowCursor(false); } }}
             onClick={(e) => { 
@@ -488,6 +488,23 @@ export function CustomPlayer({
                 muted
                 onSeeked={handlePreviewSeeked}
             />
+
+            {/* Watermark Overlay to cover WITanime logo - Scalable mathematically */}
+            <div 
+                className="absolute top-0 left-0 z-[50] bg-black/40 border-b border-r border-white/5 pointer-events-none flex items-center justify-center transition-all duration-300"
+                style={{
+                    padding: '0.8cqw 1.5cqw',
+                    gap: '0.5cqw',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    borderBottomRightRadius: '1.2cqw',
+                    minWidth: '16cqw',
+                    minHeight: '4.5cqw'
+                }}
+            >
+                <span className="text-[#00F0FF] font-black tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,1)]" style={{ fontSize: '1.5cqw' }}>WEGO</span>
+                <span className="text-white/90 font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,1)]" style={{ fontSize: '1.5cqw' }}>ANIME.com</span>
+            </div>
 
             <AnimatePresence>
                 {!isPlaying && !isWaiting && !showSettings && (
