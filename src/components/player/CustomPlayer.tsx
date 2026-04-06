@@ -489,21 +489,26 @@ export function CustomPlayer({
                 onSeeked={handlePreviewSeeked}
             />
 
-            {/* Watermark Overlay to cover WITanime logo - Scalable mathematically */}
+            {/* Watermark Overlay to cover WITanime logo - Seamless Soft Airbrush */}
             <div 
-                className="absolute top-0 left-0 z-[50] bg-black/40 border-b border-r border-white/5 pointer-events-none flex items-center justify-center transition-all duration-300"
-                style={{
-                    padding: '0.8cqw 1.5cqw',
-                    gap: '0.5cqw',
-                    backdropFilter: 'blur(20px)',
-                    WebkitBackdropFilter: 'blur(20px)',
-                    borderBottomRightRadius: '1.2cqw',
-                    minWidth: '16cqw',
-                    minHeight: '4.5cqw'
-                }}
+                className="absolute top-0 left-0 z-[50] pointer-events-none flex items-center transition-all duration-300"
+                style={{ padding: '0.8cqw 1.2cqw', gap: '0.4cqw' }}
             >
-                <span className="text-[#00F0FF] font-black tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,1)]" style={{ fontSize: '1.5cqw' }}>WEGO</span>
-                <span className="text-white/90 font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,1)]" style={{ fontSize: '1.5cqw' }}>ANIME.com</span>
+                {/* Seamless radial blur background */}
+                <div 
+                    className="absolute top-0 left-0 -z-10 pointer-events-none"
+                    style={{
+                        width: '18cqw',
+                        height: '6cqw',
+                        background: 'radial-gradient(ellipse at top left, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 70%)',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        WebkitMaskImage: 'radial-gradient(ellipse at top left, black 30%, transparent 75%)',
+                        maskImage: 'radial-gradient(ellipse at top left, black 30%, transparent 75%)'
+                    }}
+                />
+                <span className="text-[#00F0FF] font-black tracking-wider" style={{ fontSize: '1.5cqw', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>WEGO</span>
+                <span className="text-white/95 font-bold" style={{ fontSize: '1.5cqw', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>ANIME</span>
             </div>
 
             <AnimatePresence>
